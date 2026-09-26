@@ -108,9 +108,15 @@ export function SquadSummary({
               </View>
             </View>
           </View>
-          <View style={styles.trophy}>
+          {/* Shortcut to the same action as the big button at the bottom. */}
+          <Pressable
+            onPress={onStartTournament}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={startLabel}
+            style={({ pressed }) => [styles.trophy, pressed && { opacity: 0.7 }]}>
             <Icon name="workspace_premium" size={20} color={C.gold} />
-          </View>
+          </Pressable>
         </Animated.View>
 
         {/* Showcase banner */}

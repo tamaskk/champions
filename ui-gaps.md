@@ -19,7 +19,7 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 | 5 ✅ | `components/search-sheet.tsx`, `/api/search` | Kereső ikon (Explore) | Játékos / klub keresése | **Kész:** kereső lap gépelés közbeni találatokkal (ékezet nélkül is: „mbappe”, „koln”). Játékosra koppintva az adatlap (karrier, rating-idősor); klubra koppintva az évtizedei, évtizedre koppintva az akkori legjobb 12 játékos, azokra is koppintható. | – |
 | 6 ✅ | `components/formations-sheet.tsx` | „See All” a formációknál | Összes formáció listája | **Kész:** mind a 92 formáció, szűrés hátvédszám szerint (1–6), soronként változat és DF/MF/FW darabszám; koppintásra kis pályarajz a helyekkel és a posztkódok soronként. | – |
 | 7 ✅ | `app/explore.tsx` | 4 formációkártya jobbra mutató nyíllal | Formáció részletei | **Kész:** koppintásra a formáció-lista nyílik az adott formáción (kinyitva, pályarajz + posztkódok). | – |
-| 8 🔴 | `components/squad-summary.tsx:111-113` | Trófea ikon doboz a jobb felső sarokban (a bezárás gomb mellett, ugyanolyan stílusban) | Valami trófea/eredmény nézet | Semmi | Kivenni, vagy a tornaválasztóra vinni |
+| 8 ✅ | `components/squad-summary.tsx` | Trófea ikon a jobb felső sarokban | Trófea / verseny | **Kész:** ugyanazt csinálja, mint a lap alján lévő fő gomb – tornaválasztó („Start tournament”), napi kihívásnál „Check challenge”. | – |
 | 9 🟡 | `app/explore.tsx:246-282` | Hall of Fame kártyák | A mentett csapat XI-ének megnyitása | Semmi (nem is annyira gombnak látszik) | Koppintásra csapat-részletek, mint a Ranks-on |
 
 ## 2. Kamu vagy beégetett adat, ami valódinak látszik

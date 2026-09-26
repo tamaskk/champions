@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledPlugins": {
+    "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install)",
+      "Bash(pnpm typecheck)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm build)",
+      "Bash(pnpm --filter:*)",
+      "Bash(npx expo install:*)",
+      "Bash(npx expo-doctor:*)",
+      "Bash(npx tsc --noEmit:*)",
+      "WebFetch(domain:docs.expo.dev)",
+      "WebFetch(domain:api.clubelo.com)",
+      "WebFetch(domain:query.wikidata.org)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./**/.env)"
+    ]
+  }
+}

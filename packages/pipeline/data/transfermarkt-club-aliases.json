@@ -1,0 +1,8 @@
+{
+  "_comment": "Manual club fixes for tm:clubs, used before name matching. Shape: { \"<LEAGUE>\": { \"<our clubSlug>\": <Transfermarkt club id> } }. The id is the number in the club's Transfermarkt URL (/verein/<id>). Example: \"GER\": { \"cologne\": 3 }.",
+  "FRA": {
+    "aix-en-provence": 3528,
+    "niort": 1161,
+    "sedan": 1081
+  }
+}

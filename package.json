@@ -1,0 +1,20 @@
+{
+  "name": "champion",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "pnpm --filter @champion/web dev",
+    "dev:mobile": "pnpm --filter @champion/mobile start",
+    "pipeline": "pnpm --filter @champion/pipeline exec tsx src/cli.ts",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  }
+}

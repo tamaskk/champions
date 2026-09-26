@@ -1,0 +1,48 @@
+# Champion – Football 82-0
+
+Football version of the viral NBA game 82-0 (82-0.com). Player spins a random club + decade, picks one player from that squad, repeats until the XI is built (one player per decade, one re-spin each for club and decade). A simulation engine rates the squad and says whether it would win the league unbeaten.
+
+Scope: top 5 European leagues (ENG, ESP, ITA, GER, FRA), 1960s → today. Full background, data sources, licensing notes: `docs/research.md`. Read it before touching data ingestion or the simulation.
+
+## Repo layout
+
+pnpm workspaces + Turborepo. TypeScript everywhere.
+
+- `apps/mobile` – Expo (React Native, Expo Router). Has its own `CLAUDE.md`/`AGENTS.md` – follow them.
+  - UI follows the Figma "Champion" design (dark only): tokens, fonts (Inter, Space Grotesk, Material Symbols icons) and shared UI in `src/design/`; custom pill tab bar in `src/components/pill-tabs.tsx`. Session records (Home "Your records", Explore "Hall of Fame") live in memory only: `src/game/session.ts`.
+- `apps/web` – Next.js (App Router). Backend API via route handlers in `src/app/api/**`. Deployed on Vercel. Has its own `AGENTS.md`.
+  - `/admin` – data admin (dashboard, clubs, JSON club import). Basic Auth via `src/proxy.ts` + `ADMIN_PASSWORD`; Server Actions re-check auth. Mongo access only in `src/server/**`.
+- `packages/shared` – `@champion/shared`: domain types/constants shared by both apps. Source-only (no build step); Next consumes it via `transpilePackages`.
+- `packages/pipeline` – `@champion/pipeline`: data ingestion CLI (tsx). Transfermarkt squad import: `pnpm pipeline tm:clubs` → `tm:squads` → `tm:keepers` → `tm:tables` → `tm:positions` → `elo` → `rate` (player ratings) → `coverage`. See its README.
+- `docs/` – research and design notes.
+- `.claude/skills/` – project skills (data sources, pipeline, sim engine, API, mobile screens).
+
+Database: MongoDB (`MONGODB_URI`, `MONGODB_DB`, see `.env.example`; web reads `apps/web/.env.local`). Club import format: `ClubImportFile` / `parseClubImport` in `packages/shared/src/clubs.ts`.
+
+## Commands
+
+```bash
+pnpm install                     # root only; .npmrc uses node-linker=hoisted (required by Metro)
+pnpm dev:web                     # Next dev server on fixed port 3100 (mobile expects it)
+pnpm dev:mobile                  # Expo dev server
+pnpm typecheck && pnpm lint      # run before declaring done
+pnpm --filter @champion/web add <pkg>
+cd apps/mobile && npx expo install <pkg>   # mobile deps ALWAYS via expo install
+```
+
+## Rules
+
+- Domain types (League, Decade, Player, Club, ...) live in `@champion/shared`. Never duplicate them in an app.
+- `react` / `react-dom` versions must match across apps (hoisted node_modules; duplicate React breaks Metro). When Expo bumps React, bump web too.
+- Mobile talks to the backend only over HTTP (`apps/web` API). No DB access or secrets in the mobile bundle.
+- Data licensing matters: never commit scraped raw data (`data/raw/` is gitignored); store curated facts with a `source` field. See the `data-sources` skill.
+- Monetization (`monetization.md`, `packages/shared/src/store.ts`): coins buy only cosmetics and convenience. Never sell a real player, a player card, ratings, chemistry or a match advantage; never make a real person or club the product. Boosts are off in competitive modes (Daily, Head-to-head, leaderboard) – `BOOSTS_ALLOWED`. New store items must pass `validateStoreItem`. No loot boxes, no coin wagering. Coins live only on the server (`wallet-data.ts`: wallet + ledger in one transaction, idempotency key per claim/spend); the app never sends an amount, and a store item is only sold (`available`) once the game actually does what it promises.
+- Legal notice: the app is an unofficial fan game. Keep `DISCLAIMER` / `DISCLAIMER_SHORT` (`@champion/shared`) visible (Home, Explore, Ranks, share card, public squad page, store listing). No club logos, crests, kits or player photos.
+- Next.js and Expo in this repo are newer than training data. Check `node_modules/next/dist/docs/` and versioned Expo docs before using an API from memory.
+
+## Open questions (don't silently decide these)
+
+- Game rules: number of positions (11 or fewer), formation, decade constraint.
+- Simulation model (how a squad's strength turns into a result). Chemistry is decided (2026-09-26): `packages/shared/src/chemistry.ts` (links, 0–3 per player, 0–100 team, strength × 0.92–1.08), computed on the device from the career profiles `/api/squad` returns. Player strength is decided (2026-09-26): 0–100 per player season from `pnpm pipeline rate`, see `packages/pipeline/src/rating/model.ts`. Single-match model decided (2026-09-26): Poisson + Dixon–Coles on line ratings, fitted on 113k real matches, see `packages/shared/src/match.ts`. League/cup season formats still open.
+- France 1960–1988 data coverage.
+- Commercial licensing (worldfootball.net, historical-lineups.com).

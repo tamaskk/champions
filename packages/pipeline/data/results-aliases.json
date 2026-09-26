@@ -1,0 +1,3 @@
+{
+  "_comment": "Manual team links for the elo command, used before name matching. Shape: { \"<LEAGUE>\": { \"<team name as in the results file>\": <Transfermarkt club id> } }, e.g. \"FRA\": { \"Racing Club de France\": 1409 }. Names to fix are listed in the elo report (weakNameLinks, resultTeamsNotLinked)."
+}

@@ -52,6 +52,7 @@ import { clearCurrentSquad, reportResult, setCurrentSquad } from '@/game/online'
 import { kitColor, recordProgress, useProgress } from '@/game/progress';
 import { BenchRow } from '@/components/bench-row';
 import { DraftSettings } from '@/components/draft-settings';
+import { FormationInfo } from '@/components/formation-info';
 import { PlayerCard, type CardLink, type CardTarget } from '@/components/player-card';
 import { recordDraft } from '@/game/session';
 import type { DraftPlayer } from '@/mocks/players';
@@ -111,8 +112,9 @@ export default function HomeScreen() {
   const [practice, setPractice] = useState(false);
   // A finished tournament with a Second chance available: offer it before leaving.
   const [offerSecondChance, setOfferSecondChance] = useState(false);
-  // Draft settings sheet (tune button).
+  // Draft settings sheet (tune button) and formation info (tap the formation name).
   const [showSettings, setShowSettings] = useState(false);
+  const [showFormation, setShowFormation] = useState(false);
   const showLinks = useProgress().settings.showLinks;
   const { wallet } = useWallet();
   const respinTokens = wallet?.consumables.respin ?? 0;
@@ -486,7 +488,11 @@ export default function HomeScreen() {
                 style={styles.roundBtn}>
                 <Icon name="close" size={18} color={C.text} />
               </Pressable>
-              <View style={{ alignItems: 'center' }}>
+              <Pressable
+                onPress={() => setShowFormation(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Formation ${formation}: show spots and players`}
+                style={({ pressed }) => [{ alignItems: 'center' }, pressed && { opacity: 0.7 }]}>
                 <Txt v="capUpper" color={C.green} style={{ letterSpacing: 1 }}>
                   ACTIVE TACTIC
                 </Txt>
@@ -496,7 +502,7 @@ export default function HomeScreen() {
                   </Txt>
                   <Icon name="expand_more" size={16} color={C.green} />
                 </View>
-              </View>
+              </Pressable>
               <Pressable
                 onPress={() => setShowSettings(true)}
                 accessibilityRole="button"
@@ -768,6 +774,17 @@ export default function HomeScreen() {
           onHome={closeGame}
           onResult={practice ? undefined : reportResult}
           practice={practice}
+        />
+      )}
+
+      {showFormation && formation && (
+        <FormationInfo
+          formation={formation}
+          spots={spots}
+          players={lineup.map((p) => (p ? { name: p.player.name, rating: p.player.rating } : null))}
+          fits={chemistry?.fits ?? []}
+          chemistry={chemistry?.team ?? 0}
+          onClose={() => setShowFormation(false)}
         />
       )}
 

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -68,19 +68,65 @@ export function TournamentShell({
 }
 
 /**
+ * "One more" after a tournament (arcade games only): draft again with the same formation, or take
+ * this XI to another mode – that is the Second chance item, so it uses one (or opens the shop).
+ */
+export type EndActions = {
+  formation: string;
+  onDraftAgain: () => void;
+  onAnotherMode: () => void;
+  secondChances: number;
+};
+export const EndActionsContext = createContext<EndActions | null>(null);
+
+/**
  * Shown once a tournament has been played: a squad plays one competition, one time. To play
- * again you start a new game (or go back home).
+ * again you start a new game, draft again with the same formation, use a Second chance for
+ * another mode (or go back home).
  */
 export function EndBar({ onNewGame, onExit }: { onNewGame: () => void; onExit: () => void }) {
+  const more = useContext(EndActionsContext);
   return (
     <View style={styles.end}>
       <SaveSquadButton />
       <Txt v="body" color={C.textMuted} style={styles.endNote}>
-        This squad has played its tournament. Draft a new XI to play again.
+        {more
+          ? 'This squad has played its tournament. Go again:'
+          : 'This squad has played its tournament. Draft a new XI to play again.'}
       </Txt>
+      {more && (
+        <Btn
+          kind="gold"
+          icon="replay"
+          label="Play in another mode"
+          sub={
+            more.secondChances > 0
+              ? `Same XI · uses a Second chance (you have ${more.secondChances})`
+              : 'Same XI · needs a Second chance – get one in the shop'
+          }
+          onPress={more.onAnotherMode}
+        />
+      )}
       <View style={styles.endRow}>
         <Btn kind="dark" icon="sports_soccer" label="Home" onPress={onExit} style={styles.endHome} />
-        <Btn kind="green" icon="restart_alt" label="New game" onPress={onNewGame} style={styles.endNew} />
+        <Btn
+          kind={more ? 'mid' : 'green'}
+          icon="restart_alt"
+          label="New game"
+          sub={more ? 'New formation' : undefined}
+          onPress={onNewGame}
+          style={styles.endNew}
+        />
+        {more && (
+          <Btn
+            kind="green"
+            icon="casino"
+            label="Draft again"
+            sub={`Same ${more.formation}`}
+            onPress={more.onDraftAgain}
+            style={styles.endNew}
+          />
+        )}
       </View>
     </View>
   );

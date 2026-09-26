@@ -34,13 +34,14 @@ import { ChallengeMatch } from '@/components/challenge-match';
 import { H2HMatch } from '@/components/h2h-match';
 import { LeagueTournament } from '@/components/league-tournament';
 import { SeasonPlayer } from '@/components/season-player';
+import { Shop } from '@/components/shop';
 import { LegendsTournament } from '@/components/legends-tournament';
 import { MatchSetup } from '@/components/match-setup';
 import { useHideTabBar } from '@/components/pill-tabs';
 import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
 import { SquadSummary } from '@/components/squad-summary';
 import { TournamentPicker } from '@/components/tournament-picker';
-import { TournamentShell } from '@/components/tournament-shell';
+import { EndActionsContext, TournamentShell, type EndActions } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
@@ -196,7 +197,12 @@ export default function HomeScreen() {
     (height - insets.top - insets.bottom - HEADER_HEIGHT - 130 - 110 - NAV_ROOM) / 1.25,
   );
 
-  const startGame = (d: DailyResponse | null = null, practiceTry = false) => {
+  const startGame = (
+    d: DailyResponse | null = null,
+    practiceTry = false,
+    /** "Draft again": skip the formation reel and use this one. */
+    keepFormation: Formation | null = null,
+  ) => {
     gameId.current += 1;
     setPractice(practiceTry);
     setFreeRespinsUsed(0);
@@ -209,7 +215,7 @@ export default function HomeScreen() {
     // Everyone gets the same reels on the same day.
     dailyRandom.current = d ? seededRandom(`${d.date}|${d.challenge.id}`) : null;
     if (d && !practiceTry) startDailyAttempt(d.date, d.challenge.title);
-    const locked = d?.challenge.rules.formation;
+    const locked = d?.challenge.rules.formation ?? keepFormation;
     if (locked) requestAnimationFrame(() => handleResult(locked));
     else requestAnimationFrame(() => reel.current?.spin());
   };
@@ -379,6 +385,22 @@ export default function HomeScreen() {
     setShowTournaments(true);
   };
 
+  // "One more" on the end bar of a finished arcade tournament.
+  const [shopForSecondChance, setShopForSecondChance] = useState(false);
+  const endActions: EndActions | null =
+    finished && !daily && formation
+      ? {
+          formation,
+          secondChances,
+          onDraftAgain: () => {
+            const same = formation;
+            closeGame();
+            startGame(null, false, same);
+          },
+          onAnotherMode: () => (secondChances > 0 ? void takeSecondChance() : setShopForSecondChance(true)),
+        }
+      : null;
+
   const handlePick = (pick: DraftPick) => {
     setDrawing(false);
     setPending(pick);
@@ -477,7 +499,7 @@ export default function HomeScreen() {
   const overall = formation ? squadSummary(formation, lineupPlayers).overall : 0;
   const nextSpot = openSpots[0]?.code;
 
-  return (
+  const screen = (
     <View style={styles.screen}>
       <ScreenHeader title={daily ? 'Daily Challenge' : 'Home'} />
 
@@ -1031,8 +1053,10 @@ export default function HomeScreen() {
             challenge={challenge}
           />
         ))}
+      {shopForSecondChance && <Shop onClose={() => setShopForSecondChance(false)} />}
     </View>
   );
+  return <EndActionsContext.Provider value={endActions}>{screen}</EndActionsContext.Provider>;
 }
 
 const styles = StyleSheet.create({

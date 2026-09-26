@@ -117,7 +117,7 @@ export type ProgressEvent =
   | { kind: 'legend'; won: boolean }
   /** First win against a legend: remembered for the collection achievements, no XP of its own. */
   | { kind: 'legend-beaten'; legendId: string }
-  | { kind: 'daily'; won: boolean; /** Won dailies in a row, today included. */ streak?: number };
+  | { kind: 'daily'; won: boolean; /** Dailies played in a row (won or not, streak freezes bridging a missed day), today included. */ streak?: number };
 
 const clubCounts = (d: DraftEvent) => {
   const counts = new Map<string, number>();

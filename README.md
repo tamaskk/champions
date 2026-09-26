@@ -85,7 +85,7 @@ attack) against the opponent's. The stronger side wins as often as it did in rea
 | **Head-to-head** | Matched with a random player searching at the same time; the server simulates one match for both. |
 | **Mini-leagues** | Private groups with an invite code (Ranks → Leagues). Every member's daily score (100 for meeting all targets + overall + chemistry, recomputed on the server) adds up to a weekly table, Monday–Sunday. |
 
-**Progression** – XP and levels (first win of the day ×2, daily streak multipliers), 14
+**Progression** – XP and levels (first win of the day ×2, daily streak multipliers – the streak counts playing, not winning, with one free streak freeze a week), 14
 achievements, level-up rewards (kits, crests, card frames), a monthly Season Pass, prestige,
 lifetime statistics, a leaderboard and shareable squad cards.
 

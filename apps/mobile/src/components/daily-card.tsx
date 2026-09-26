@@ -7,7 +7,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Chip } from '@/design/ui';
-import { dailyStreak, useDailyAttempts } from '@/game/daily';
+import { dailyStreakInfo, useDailyAttempts } from '@/game/daily';
 import { shareText } from '@/game/share';
 import { useWallet } from '@/game/wallet';
 
@@ -28,7 +28,8 @@ export function DailyCard({
   const [daily, setDaily] = useState<DailyResponse>(() => dailyForDate(date));
   const attempts = useDailyAttempts();
   const attempt = attempts[date];
-  const streak = dailyStreak(date, attempts);
+  const streakInfo = dailyStreakInfo(date, attempts);
+  const streak = streakInfo.days;
   useEffect(() => {
     let live = true;
     fetchDaily(date)
@@ -67,6 +68,11 @@ export function DailyCard({
           <Txt v="cap" color={C.gold}>
             {streak > 0 ? `${streak}-day streak · ${date}` : date}
           </Txt>
+          {streak > 0 && (
+            <Txt v="cap" color={streakInfo.freezeLeft ? C.blueLight : C.textDim}>
+              {streakInfo.freezeLeft ? ' · ❄ freeze ready' : ' · ❄ used this week'}
+            </Txt>
+          )}
         </View>
       </View>
       <View style={styles.card}>

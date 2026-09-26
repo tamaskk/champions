@@ -258,6 +258,8 @@ export type Progress = {
   firstWinDate: string | null;
   /** Equipped cosmetics beyond kit and crest (ids of owned store items, or null). */
   equipped: { frame: string | null; pitch: string | null; reel: string | null; celebration: string | null };
+  /** Draft settings (the tune button on the draft screen). */
+  settings: { fastReels: boolean; showLinks: boolean };
 };
 
 export const CREST_SHAPES = ['shield', 'circle', 'diamond', 'square'] as const;
@@ -300,6 +302,7 @@ const EMPTY: Progress = {
   prestige: 0,
   firstWinDate: null,
   equipped: { frame: null, pitch: null, reel: null, celebration: null },
+  settings: { fastReels: false, showLinks: true },
 };
 
 function load(): Progress {
@@ -312,6 +315,7 @@ function load(): Progress {
         stats: { ...EMPTY.stats, ...saved.stats },
         team: { ...EMPTY.team, ...saved.team },
         equipped: { ...EMPTY.equipped, ...saved.equipped },
+        settings: { ...EMPTY.settings, ...saved.settings },
       }
     : EMPTY;
 }
@@ -561,4 +565,10 @@ export function teamInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);
   if (words.length >= 2) return words.slice(0, 3).map((w) => w[0]!.toUpperCase()).join('');
   return (words[0] ?? 'XI').slice(0, 3).toUpperCase();
+}
+
+export function setSetting<K extends keyof Progress['settings']>(key: K, value: Progress['settings'][K]) {
+  progress = { ...progress, settings: { ...progress.settings, [key]: value } };
+  saveJSON('progress', progress);
+  emit();
 }

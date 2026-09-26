@@ -51,6 +51,7 @@ import { startDailyAttempt } from '@/game/daily';
 import { clearCurrentSquad, reportResult, setCurrentSquad } from '@/game/online';
 import { kitColor, recordProgress, useProgress } from '@/game/progress';
 import { BenchRow } from '@/components/bench-row';
+import { DraftSettings } from '@/components/draft-settings';
 import { PlayerCard, type CardLink, type CardTarget } from '@/components/player-card';
 import { recordDraft } from '@/game/session';
 import type { DraftPlayer } from '@/mocks/players';
@@ -110,6 +111,9 @@ export default function HomeScreen() {
   const [practice, setPractice] = useState(false);
   // A finished tournament with a Second chance available: offer it before leaving.
   const [offerSecondChance, setOfferSecondChance] = useState(false);
+  // Draft settings sheet (tune button).
+  const [showSettings, setShowSettings] = useState(false);
+  const showLinks = useProgress().settings.showLinks;
   const { wallet } = useWallet();
   const respinTokens = wallet?.consumables.respin ?? 0;
   const secondChances = wallet?.consumables['second-chance'] ?? 0;
@@ -493,9 +497,13 @@ export default function HomeScreen() {
                   <Icon name="expand_more" size={16} color={C.green} />
                 </View>
               </View>
-              <View style={[styles.roundBtn, { opacity: 0.6 }]}>
+              <Pressable
+                onPress={() => setShowSettings(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Draft settings"
+                style={({ pressed }) => [styles.roundBtn, pressed && { opacity: 0.7 }]}>
                 <Icon name="tune" size={18} color={C.text} />
-              </View>
+              </Pressable>
             </View>
 
             <View style={styles.ticker}>
@@ -574,7 +582,7 @@ export default function HomeScreen() {
               ratings={lineup.map((p) => p?.player.rating ?? null)}
               pillars={pillars}
               onPlayerPress={pressSpot}
-              links={chemistry?.links}
+              links={showLinks ? chemistry?.links : undefined}
               chemistry={chemistry?.players}
               gains={
                 pendingPreview
@@ -760,6 +768,26 @@ export default function HomeScreen() {
           onHome={closeGame}
           onResult={practice ? undefined : reportResult}
           practice={practice}
+        />
+      )}
+
+      {showSettings && (
+        <DraftSettings
+          respins={
+            daily
+              ? null
+              : { freeLeft: Math.max(0, FREE_RESPINS_PER_DRAFT - freeRespinsUsed), bought: respinTokens }
+          }
+          onRestart={
+            daily
+              ? undefined
+              : () => {
+                  setShowSettings(false);
+                  closeGame();
+                  startGame();
+                }
+          }
+          onClose={() => setShowSettings(false)}
         />
       )}
 

@@ -51,8 +51,11 @@ export function SlotReel<T extends string>({
   random = Math.random,
   ref,
 }: Props<T>) {
+  const progress = useProgress();
   // "Casino reels" (store cosmetic): neon red numbers on a dark red payline.
-  const casino = useProgress().equipped.reel === 'reel-casino';
+  const casino = progress.equipped.reel === 'reel-casino';
+  // Draft setting "Fast spins": every reel takes half the time.
+  const spinMs = progress.settings.fastReels ? Math.round(duration / 2) : duration;
   const n = items.length;
   const center = Math.floor(visibleRows / 2);
   const loops = Math.max(2, Math.ceil(MIN_TRAVEL_ROWS / n));
@@ -101,14 +104,14 @@ export function SlotReel<T extends string>({
       topRow.current = endTop;
       offsetY.value = withSequence(
         withTiming(-startTop * rowHeight, { duration: 0 }),
-        withTiming(-endTop * rowHeight, { duration, easing: Easing.out(Easing.poly(4)) }, () => {
+        withTiming(-endTop * rowHeight, { duration: spinMs, easing: Easing.out(Easing.poly(4)) }, () => {
           scheduleOnRN(finish, spinId, index);
         }),
       );
       safety.current = setTimeout(() => {
         offsetY.value = -endTop * rowHeight; // snap to the result if the animation was cut short
         finish(spinId, index);
-      }, duration + SAFETY_MS);
+      }, spinMs + SAFETY_MS);
     },
   }));
 

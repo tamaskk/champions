@@ -42,7 +42,7 @@ Bundesliga, Ligue 1 / Division 1) from the 1960s to today, with ~184,000 real pl
 3. **Pick a player** from that club's real squad of the decade. Each player shows his positions,
    stats and a 0–100 **decade rating**.
 4. **Place him** on a spot: green = his main position, gold = one of his other positions. Players
-   who fit no open spot can go to the **bench** (3–5 substitutes).
+   who fit no open spot can go to the **bench** (up to 5 substitutes, optional – **Auto-bench** fills it in one tap).
 5. **Re-spin** a reel if you don't like it (3 free per draft in casual games), **swap** players,
    pick a **captain** (+1 chemistry to his neighbours), or hit **Autocomplete**.
 6. **Complete the squad** → summary (rating, chemistry, overall, best partnerships) → play a

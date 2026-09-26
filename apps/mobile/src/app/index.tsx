@@ -67,7 +67,8 @@ const TOURNAMENT_LABELS = Object.fromEntries(TOURNAMENT_MODES.map((m) => [m.id, 
 
 // Substitutes' bench (arcade mode): slots and the minimum to complete the squad.
 const BENCH_SIZE = 5;
-const BENCH_MIN = 3;
+// The bench is optional: an empty one just means tired starters over a league season.
+const BENCH_MIN = 0;
 const EMPTY_BENCH: (DraftPick | null)[] = Array(BENCH_SIZE).fill(null);
 
 export default function HomeScreen() {
@@ -83,7 +84,7 @@ export default function HomeScreen() {
   // Remounts the draft reels on every spin so they start fresh.
   const [drawId, setDrawId] = useState(0);
   const [lineup, setLineup] = useState<(DraftPick | null)[]>([]);
-  // Substitutes (arcade only): at least BENCH_MIN of BENCH_SIZE to complete; rotated in over a season.
+  // Substitutes (arcade only, optional): up to BENCH_SIZE, rotated in over a league season.
   const [bench, setBench] = useState<(DraftPick | null)[]>(EMPTY_BENCH);
   // Captain by player id, so the armband follows him through swaps.
   const [captainId, setCaptainId] = useState<string | null>(null);
@@ -140,7 +141,7 @@ export default function HomeScreen() {
   const useBench = !daily;
   const benchCount = bench.filter(Boolean).length;
   const benchOpen = useBench && benchCount < BENCH_SIZE;
-  // The squad is complete with a full XI and (arcade) at least BENCH_MIN substitutes.
+  // The squad is complete with a full XI (the bench is optional, BENCH_MIN = 0).
   const squadReady = lineupFull && (!useBench || benchCount >= BENCH_MIN);
   const placed = lineup.filter((p): p is DraftPick => !!p);
   // Dummy players have no rating and add nothing.
@@ -251,6 +252,17 @@ export default function HomeScreen() {
     setFreeRespinsUsed(0);
     setOfferSecondChance(false);
     clearCurrentSquad();
+  };
+
+  // One tap for the whole bench: fills the empty slots (same draw as Autocomplete).
+  const autoBench = async () => {
+    const id = gameId.current;
+    setSelected(null);
+    setAutofilling(true);
+    const subs = await autofillBench(bench, lineup, () => id !== gameId.current);
+    if (id !== gameId.current) return;
+    setBench(subs);
+    setAutofilling(false);
   };
 
   const spin = () => {
@@ -652,13 +664,21 @@ export default function HomeScreen() {
                       ? ` · up to +${pendingPreview.best.gain} chemistry`
                       : ''}
                   </>
-                ) : lineupFull && !squadReady ? (
+                ) : lineupFull && benchOpen ? (
                   <>
-                    XI complete. Draft at least{' '}
+                    XI complete. The bench is{' '}
+                    <Txt v="bodyBold" color={C.text}>
+                      optional
+                    </Txt>
+                    : substitutes rest your starters over a league season.{' '}
                     <Txt v="bodyBold" color={C.gold}>
-                      {BENCH_MIN - benchCount} more
+                      Auto-bench
                     </Txt>{' '}
-                    for the bench: substitutes rest your starters over a league season.
+                    fills it in one tap, or tap{' '}
+                    <Txt v="bodyBold" color={C.blueLight}>
+                      Complete
+                    </Txt>
+                    .
                   </>
                 ) : lineupFull ? (
                   <>
@@ -710,16 +730,41 @@ export default function HomeScreen() {
             )}
 
             {!pending && !moving && (
-              <Animated.View entering={FadeIn.duration(200)} style={styles.actions}>
+              <Animated.View entering={FadeIn.duration(200)} style={squadReady && benchOpen ? styles.actionsColumn : styles.actions}>
                 {squadReady ? (
-                  <Btn
-                    kind="blue"
-                    icon="check_circle"
-                    label="COMPLETE SQUAD"
-                    sub={daily ? 'Check the challenge' : 'Summary & tournaments'}
-                    onPress={complete}
-                    style={styles.flex}
-                  />
+                  <>
+                    {benchOpen && (
+                      <View style={styles.actions}>
+                        <Btn
+                          kind="gold"
+                          icon="auto_awesome"
+                          label={autofilling ? 'FILLING…' : 'AUTO-BENCH'}
+                          sub={`${BENCH_SIZE - benchCount} subs in one tap`}
+                          disabled={autofilling}
+                          onPress={autoBench}
+                          style={styles.flex}
+                        />
+                        <Btn
+                          kind="dark"
+                          icon="casino"
+                          label="SPIN A SUB"
+                          sub="BENCH"
+                          disabled={autofilling}
+                          onPress={spin}
+                          style={styles.flex}
+                        />
+                      </View>
+                    )}
+                    <Btn
+                      kind="blue"
+                      icon="check_circle"
+                      label="COMPLETE SQUAD"
+                      sub={daily ? 'Check the challenge' : benchCount ? 'Summary & tournaments' : 'No bench · summary & tournaments'}
+                      disabled={autofilling}
+                      onPress={complete}
+                      style={benchOpen ? undefined : styles.flex}
+                    />
+                  </>
                 ) : (
                   <>
                     {!daily && (
@@ -1126,6 +1171,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: R.md,
     backgroundColor: C.surface,
+  },
+  actionsColumn: {
+    gap: 8,
   },
   actions: {
     flexDirection: 'row',

@@ -23,8 +23,8 @@ export function BenchRow({ bench, min, placing, onPress }: Props) {
         <Txt v="capUpper" color={C.textMuted}>
           BENCH
         </Txt>
-        <Txt v="cap" color={filled >= min ? C.green : C.gold}>
-          {filled}/{bench.length} · min {min}
+        <Txt v="cap" color={filled < min ? C.gold : filled ? C.green : C.textMuted}>
+          {filled}/{bench.length} · {min > 0 ? `min ${min}` : 'optional'}
         </Txt>
       </View>
       <View style={styles.row}>

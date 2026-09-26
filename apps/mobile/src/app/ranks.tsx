@@ -18,6 +18,7 @@ import { FormationPitch } from '@/components/formation-pitch';
 import { useHideTabBar } from '@/components/pill-tabs';
 import { ShareSheet } from '@/components/share-sheet';
 import { LegalNote } from '@/components/legal-note';
+import { MiniLeagues } from '@/components/mini-leagues';
 import { Icon, type IconName } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
@@ -25,7 +26,7 @@ import { Btn, Chip, Glow, SHADOW_SM, ScreenHeader, ratingTint } from '@/design/u
 import { setPendingChallenge, usePendingChallenge } from '@/game/challenge';
 import { ensureUser, useUser } from '@/game/user';
 
-type Period = 'all' | 'week';
+type Period = 'all' | 'week' | 'leagues';
 type Load = { status: 'loading' | 'error' } | { status: 'ready'; squads: LeaderboardEntry[] };
 
 const OUTCOME: Record<SquadResult['outcome'], { icon: IconName; color: string }> = {
@@ -70,6 +71,8 @@ export default function RanksScreen() {
   }, [params.challenge]);
 
   const refresh = useCallback(async (p: Period) => {
+    // Mini-leagues load themselves.
+    if (p === 'leagues') return;
     try {
       const { squads } = await fetchLeaderboard(p);
       setLoad({ status: 'ready', squads });
@@ -124,7 +127,7 @@ export default function RanksScreen() {
         </Animated.View>
 
         <View style={styles.segment}>
-          {(['all', 'week'] as const).map((p) => (
+          {(['all', 'week', 'leagues'] as const).map((p) => (
             <Pressable
               key={p}
               onPress={() => {
@@ -135,25 +138,27 @@ export default function RanksScreen() {
               accessibilityState={{ selected: period === p }}
               style={[styles.segBtn, period === p && styles.segActive]}>
               <Txt v="h14" color={period === p ? C.onGreenStrong : C.textMuted}>
-                {p === 'all' ? 'All time' : 'This week'}
+                {p === 'all' ? 'All time' : p === 'week' ? 'This week' : 'Leagues'}
               </Txt>
             </Pressable>
           ))}
         </View>
 
-        {load.status === 'loading' && <ActivityIndicator color={C.green} style={{ marginTop: 24 }} />}
-        {load.status === 'error' && (
+        {period === 'leagues' && <MiniLeagues />}
+
+        {period !== 'leagues' && load.status === 'loading' && <ActivityIndicator color={C.green} style={{ marginTop: 24 }} />}
+        {period !== 'leagues' && load.status === 'error' && (
           <Txt v="bodySemi" color={C.red} style={styles.center}>
             Couldn&apos;t load the leaderboard. Check that the web server is running.
           </Txt>
         )}
-        {load.status === 'ready' && squads.length === 0 && (
+        {period !== 'leagues' && load.status === 'ready' && squads.length === 0 && (
           <Txt v="body" color={C.textMuted} style={styles.center}>
             No squads yet. Draft an XI and save it – yours will be the first!
           </Txt>
         )}
 
-        {squads.map((s, i) => {
+        {period !== 'leagues' && squads.map((s, i) => {
           const mine = !!user && s.username === user.username;
           const result = s.result ? OUTCOME[s.result.outcome] : null;
           return (

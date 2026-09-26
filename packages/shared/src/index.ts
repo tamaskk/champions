@@ -15,3 +15,4 @@ export * from './h2h';
 export * from './store';
 export * from './economy';
 export * from './auth';
+export * from './mini-leagues';

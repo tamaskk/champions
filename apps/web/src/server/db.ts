@@ -99,6 +99,28 @@ export type H2HTicketDoc = {
 };
 
 // Reuse one client across hot reloads in dev and across invocations on Vercel.
+/** A player's official Daily Challenge result (one per day; the first one counts). */
+export type DailyScoreDoc = {
+  userId: string;
+  date: string;
+  challengeId: string;
+  score: number;
+  success: boolean;
+  overall: number;
+  chemistry: number;
+  createdAt: Date;
+};
+
+/** A private mini-league of friends (joined with its invite code). */
+export type MiniLeagueDoc = {
+  name: string;
+  code: string;
+  ownerId: string;
+  /** userIds, in joining order. */
+  members: string[];
+  createdAt: Date;
+};
+
 const globalForMongo = globalThis as unknown as { mongo?: Promise<Db> };
 
 async function connect(uri: string): Promise<Db> {
@@ -129,6 +151,13 @@ async function connect(uri: string): Promise<Db> {
     { key: { userId: 1, key: 1 }, unique: true },
     { key: { userId: 1, source: 1, createdAt: -1 } },
   ]);
+  await db.collection<DailyScoreDoc>("dailyScores").createIndexes([
+    { key: { userId: 1, date: 1 }, unique: true },
+    { key: { date: 1 } },
+  ]);
+  await db
+    .collection<MiniLeagueDoc>("miniLeagues")
+    .createIndexes([{ key: { code: 1 }, unique: true }, { key: { members: 1 } }]);
   return db;
 }
 
@@ -176,6 +205,14 @@ export async function wallets(): Promise<Collection<WalletDoc>> {
 
 export async function coinLedger(): Promise<Collection<LedgerDoc>> {
   return (await getDb()).collection<LedgerDoc>("coinLedger");
+}
+
+export async function dailyScores(): Promise<Collection<DailyScoreDoc>> {
+  return (await getDb()).collection<DailyScoreDoc>("dailyScores");
+}
+
+export async function miniLeagues(): Promise<Collection<MiniLeagueDoc>> {
+  return (await getDb()).collection<MiniLeagueDoc>("miniLeagues");
 }
 
 /** The Mongo client, for multi-document transactions (wallet + ledger). */

@@ -83,6 +83,7 @@ attack) against the opponent's. The stronger side wins as often as it did in rea
 | **Legends** | Beat legendary teams (Sacchi's Milan, Guardiola's Barcelona, …) and collect them. |
 | **Daily Challenge** | One themed challenge a day with fixed rules and seeded reels – everyone gets the same draw. |
 | **Head-to-head** | Matched with a random player searching at the same time; the server simulates one match for both. |
+| **Mini-leagues** | Private groups with an invite code (Ranks → Leagues). Every member's daily score (100 for meeting all targets + overall + chemistry, recomputed on the server) adds up to a weekly table, Monday–Sunday. |
 
 **Progression** – XP and levels (first win of the day ×2, daily streak multipliers), 14
 achievements, level-up rewards (kits, crests, card frames), a monthly Season Pass, prestige,
@@ -255,6 +256,7 @@ challenge scheduling.
 | `POST /api/users`, `/api/squads`, `/api/h2h/*` | Guest users, leaderboard, head-to-head |
 | `POST /api/auth/register · login · me · password` | Email + password accounts |
 | `POST /api/wallet · wallet/claim · buy · use · invite · rename` | Coin wallet (server-side) |
+| `POST /api/daily/score`, `/api/leagues · leagues/create · join · leave · detail` | Official daily scores and mini-leagues |
 | `POST /api/iap/revenuecat` | Store purchase webhook |
 
 Server-only code (Mongo access, wallet, auth) is in `apps/web/src/server/`.

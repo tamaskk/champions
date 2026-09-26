@@ -28,6 +28,10 @@ import {
   type LoginRequest,
   type RegisterRequest,
   type SearchResponse,
+  type DailyScoreRequest,
+  type DailyScoreResponse,
+  type MiniLeagueDetail,
+  type MiniLeaguesResponse,
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
@@ -149,6 +153,31 @@ async function postJSON<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
+
+/** Like postJSON, but a 400 throws the server's message (shown to the player, e.g. "That league is full"). */
+async function postJSONMessage<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${apiBaseUrl()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
+  if (!res.ok || !data) throw new Error(res.status === 400 && data?.error ? data.error : 'No connection to the server');
+  return data;
+}
+
+// ---- Daily scores and mini-leagues (friends' groups)
+/** Your official result of a day's Daily (the server recomputes the score). */
+export const submitDailyScore = (body: DailyScoreRequest) => postJSON<DailyScoreResponse>('/api/daily/score', body);
+export const fetchMiniLeagues = (userId: string) => postJSONMessage<MiniLeaguesResponse>('/api/leagues', { userId });
+export const createMiniLeague = (userId: string, name: string) =>
+  postJSONMessage<MiniLeaguesResponse>('/api/leagues/create', { userId, name });
+export const joinMiniLeague = (userId: string, code: string) =>
+  postJSONMessage<MiniLeaguesResponse>('/api/leagues/join', { userId, code });
+export const leaveMiniLeague = (userId: string, id: string) =>
+  postJSONMessage<MiniLeaguesResponse>('/api/leagues/leave', { userId, id });
+export const fetchMiniLeague = (userId: string, id: string, week?: string) =>
+  postJSONMessage<MiniLeagueDetail>('/api/leagues/detail', { userId, id, week });
 
 async function getJSON<T>(path: string): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}${path}`);

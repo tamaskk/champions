@@ -1,5 +1,5 @@
 import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -54,8 +54,8 @@ export function SlotReel<T extends string>({
   const progress = useProgress();
   // "Casino reels" (store cosmetic): neon red numbers on a dark red payline.
   const casino = progress.equipped.reel === 'reel-casino';
-  // Draft setting "Fast spins": every reel takes half the time.
-  const spinMs = progress.settings.fastReels ? Math.round(duration / 2) : duration;
+  // Spins are fast by default (half the reel's duration); the "Dramatic spins" setting plays them in full.
+  const spinMs = progress.settings.dramaticReels ? duration : Math.round(duration / 2);
   const n = items.length;
   const center = Math.floor(visibleRows / 2);
   const loops = Math.max(2, Math.ceil(MIN_TRAVEL_ROWS / n));
@@ -91,6 +91,16 @@ export function SlotReel<T extends string>({
     latest.current.onResult(latest.current.items[index]);
   };
   const spinCount = useRef(0);
+  // The spin in progress (its result is drawn when it starts), for tap-to-stop.
+  const current = useRef<{ spinId: number; index: number; endTop: number } | null>(null);
+
+  // Tap a spinning reel: it jumps straight to the result it was already going to show.
+  const stop = () => {
+    const c = current.current;
+    if (!spinning.current || !c) return;
+    offsetY.value = -c.endTop * rowHeight; // cancels the running animation
+    finish(c.spinId, c.index);
+  };
 
   useImperativeHandle(ref, () => ({
     spin() {
@@ -102,6 +112,7 @@ export function SlotReel<T extends string>({
       const drift = (((topRow.current - endTop) % n) + n) % n;
       const startTop = endTop + loops * n + drift;
       topRow.current = endTop;
+      current.current = { spinId, index, endTop };
       offsetY.value = withSequence(
         withTiming(-startTop * rowHeight, { duration: 0 }),
         withTiming(-endTop * rowHeight, { duration: spinMs, easing: Easing.out(Easing.poly(4)) }, () => {
@@ -133,7 +144,11 @@ export function SlotReel<T extends string>({
     ));
 
   return (
-    <View style={[styles.window, { width, height: rowHeight * visibleRows }]}>
+    <Pressable
+      onPress={stop}
+      accessibilityRole="button"
+      accessibilityHint="Tap while it spins to stop the reel"
+      style={[styles.window, { width, height: rowHeight * visibleRows }]}>
       <Animated.View style={stripStyle}>{row(false)}</Animated.View>
       <View
         pointerEvents="none"
@@ -142,7 +157,7 @@ export function SlotReel<T extends string>({
       </View>
       <View pointerEvents="none" style={[styles.fade, styles.fadeTop, { height: rowHeight * 0.9 }]} />
       <View pointerEvents="none" style={[styles.fade, styles.fadeBottom, { height: rowHeight * 0.9 }]} />
-    </View>
+    </Pressable>
   );
 }
 

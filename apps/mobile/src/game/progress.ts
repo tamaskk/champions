@@ -259,7 +259,8 @@ export type Progress = {
   /** Equipped cosmetics beyond kit and crest (ids of owned store items, or null). */
   equipped: { frame: string | null; pitch: string | null; reel: string | null; celebration: string | null };
   /** Draft settings (the tune button on the draft screen). */
-  settings: { fastReels: boolean; showLinks: boolean };
+  /** dramaticReels: full-length spins (fast ones are the default since "Fast spins" was replaced). */
+  settings: { dramaticReels: boolean; showLinks: boolean };
 };
 
 export const CREST_SHAPES = ['shield', 'circle', 'diamond', 'square'] as const;
@@ -302,7 +303,7 @@ const EMPTY: Progress = {
   prestige: 0,
   firstWinDate: null,
   equipped: { frame: null, pitch: null, reel: null, celebration: null },
-  settings: { fastReels: false, showLinks: true },
+  settings: { dramaticReels: false, showLinks: true },
 };
 
 function load(): Progress {
@@ -315,7 +316,8 @@ function load(): Progress {
         stats: { ...EMPTY.stats, ...saved.stats },
         team: { ...EMPTY.team, ...saved.team },
         equipped: { ...EMPTY.equipped, ...saved.equipped },
-        settings: { ...EMPTY.settings, ...saved.settings },
+        // The old "fastReels" flag is dropped: fast spins are now the default for everyone.
+        settings: { dramaticReels: saved.settings?.dramaticReels ?? false, showLinks: saved.settings?.showLinks ?? true },
       }
     : EMPTY;
 }

@@ -35,16 +35,16 @@ export function DraftSettings({ respins, onRestart, onClose }: Props) {
 
         <View style={styles.item}>
           <View style={styles.flex}>
-            <Txt v="bodyBold">Fast spins</Txt>
+            <Txt v="bodyBold">Dramatic spins</Txt>
             <Txt v="cap" color={C.textMuted}>
-              Every reel stops in half the time
+              Reels spin twice as long. Tap a spinning reel to stop it at once either way.
             </Txt>
           </View>
           <Switch
-            value={settings.fastReels}
-            onValueChange={(v) => setSetting('fastReels', v)}
+            value={settings.dramaticReels}
+            onValueChange={(v) => setSetting('dramaticReels', v)}
             trackColor={{ true: C.greenStrong, false: C.surface4 }}
-            accessibilityLabel="Fast spins"
+            accessibilityLabel="Dramatic spins"
           />
         </View>
 

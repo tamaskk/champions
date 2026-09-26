@@ -20,7 +20,7 @@ Jelmagyarázat (ráfordítás): 🟢 gyors (≤ 1 nap) · 🟡 közepes (2–5 n
 | # | Hol | Elem | Probléma | Javaslat | Hatás |
 |---|---|---|---|---|---|
 | 3 ✅ | `components/draft-settings.tsx` | Fast spins | A tárcsák egymás után forognak (`slot-reel.tsx` 5000 ms, `draft-spin.tsx` `SPIN_DURATION` 2600 ms) – egy draft percekig tart | **Kész:** Fast spins beállítás, fele idő | – |
-| 4 🟢 | `slot-reel.tsx:11`, `draft-spin.tsx:47` | Alapértelmezett pörgési idő | A Fast spins ki van kapcsolva alapból, az új játékos a lassút kapja | A gyors legyen az alap, a lassú opció („drámai”); koppintásra a tárcsa azonnal megálljon | ⬆ |
+| 4 ✅ | `slot-reel.tsx:11`, `draft-spin.tsx:47` | Alapértelmezett pörgési idő | A Fast spins ki van kapcsolva alapból, az új játékos a lassút kapja | **Kész:** gyors az alap mindenkinek (régi mentésekkel is), „Dramatic spins” a lassú opció; koppintásra bármelyik tárcsa azonnal megáll (az eredmény már a pörgés elején eldől) | – |
 | 5 ✅ | `app/index.tsx:330`, `economy.ts:124` | Re-spin keret | Korlátlan re-spin = nincs döntés, nincs tét | **Kész:** draftonként 3 ingyenes (`FREE_RESPINS_PER_DRAFT`), utána vett | – |
 | 6 ✅ | `app/index.tsx:68` | `BENCH_MIN = 3` | A kispad kötelező kitöltése még 3 pörgetés, amit a legtöbben átugranának | **Kész:** kispad opcionális (`BENCH_MIN = 0`), kész XI után „Auto-bench” egy koppintással kitölti, vagy „Spin a sub” | – |
 | 7 ✅ | `app/index.tsx:113`, `:339` | Egy csapat = egy torna | A kész csapat egy torna után elveszik | **Kész:** Second chance (bolti tétel) | – |

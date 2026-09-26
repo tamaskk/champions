@@ -1,8 +1,10 @@
-import { FORMATIONS } from '@champion/shared';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { FORMATIONS, type LeaderboardEntry } from '@champion/shared';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { fetchLeaderboard } from '@/api/client';
 import { FormationsSheet, MiniPitch, formationInfo } from '@/components/formations-sheet';
 import { SearchSheet } from '@/components/search-sheet';
 import { HallOfFameDetail } from '@/components/hall-of-fame-detail';
@@ -41,13 +43,6 @@ const TIERS: { stars: string; title: string; bonus: string; text: string; dot: s
   },
 ];
 
-// Online leaderboard: not built yet (shown dimmed as a preview).
-const LEADERS = [
-  { user: '@ZizouMaster', squad: "Barça '10s + Milan '90s Core", pts: 114, run: '38-0', ovr: 95 },
-  { user: '@SanSiroKing', squad: 'Sacchi Milan + Real Galácticos', pts: 114, run: '38-0', ovr: 94 },
-  { user: '@CruyffVision', squad: "Ajax '95 + High Press Arsenal '04", pts: 112, run: '37-1-0', ovr: 93 },
-];
-
 // Four well-known shapes from the real formation list (details come from the formation itself).
 const FORMATION_CARDS = [
   { id: '4-3-3', tag: 'CLASSIC' },
@@ -61,6 +56,19 @@ export default function ExploreScreen() {
   const records = useRecords();
   const [filter, setFilter] = useState<Filter>('All');
   const [searching, setSearching] = useState(false);
+  // Real top 3 of the online leaderboard, reloaded whenever the tab comes into view.
+  const [leaders, setLeaders] = useState<LeaderboardEntry[] | null | 'error'>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let live = true;
+      fetchLeaderboard('all')
+        .then((r) => live && setLeaders(r.squads.slice(0, 3)))
+        .catch(() => live && setLeaders('error'));
+      return () => {
+        live = false;
+      };
+    }, []),
+  );
   const [hallSquad, setHallSquad] = useState<SavedSquad | null>(null);
   // true = the full list; a formation id = the list opened on that formation.
   const [showFormations, setShowFormations] = useState<boolean | string>(false);
@@ -273,46 +281,74 @@ export default function ExploreScreen() {
           </View>
         )}
 
-        {/* Leaderboard preview */}
+        {/* Leaderboard preview: the real top 3 from the online leaderboard (Ranks tab) */}
         {show('Leaderboard') && (
           <View style={styles.board}>
             <View style={styles.between}>
               <View style={styles.row4}>
                 <Icon name="emoji_events" size={20} color={C.gold} />
-                <Txt v="h20">Global 38-0 Vault</Txt>
+                <Txt v="h20">Top squads</Txt>
               </View>
-              <Chip label="ONLINE SOON" color={C.textMuted} bg={C.surface3} type="capUpper" radius={R.pill} />
+              <Chip label="LIVE" dot={C.green} color={C.green} bg={C.surface3} type="capUpper" radius={R.pill} />
             </View>
-            <View style={[styles.gap8, { opacity: 0.45 }]}>
-              {LEADERS.map((l, i) => (
-                <View key={l.user} style={styles.leader}>
-                  <View style={[styles.rank, i === 0 && { backgroundColor: alpha(C.goldDeep, 0.3) }]}>
-                    <Txt v="h14" color={i === 0 ? C.gold : C.text}>
-                      {i + 1}
-                    </Txt>
-                  </View>
-                  <View style={styles.flex}>
-                    <Txt v="h16" numberOfLines={1}>
-                      {l.user}
-                    </Txt>
-                    <Txt v="body" color={C.textMuted} numberOfLines={1}>
-                      {l.squad}
-                    </Txt>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Txt v="h20" color={C.gold}>
-                      {l.pts}{' '}
-                      <Txt v="cap" color={C.textMuted}>
-                        PTS
+            {leaders === null && <ActivityIndicator color={C.green} />}
+            {leaders === 'error' && (
+              <Txt v="body" color={C.textMuted}>
+                Couldn&apos;t load the leaderboard – check your connection.
+              </Txt>
+            )}
+            {Array.isArray(leaders) && leaders.length === 0 && (
+              <Txt v="body" color={C.textMuted}>
+                No saved squads yet – finish a draft and save it to be the first.
+              </Txt>
+            )}
+            {Array.isArray(leaders) && (
+              <View style={styles.gap8}>
+                {leaders.map((l, i) => (
+                  <Pressable
+                    key={l.id}
+                    onPress={() => router.navigate({ pathname: '/ranks', params: { squad: l.id } })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Number ${i + 1}: @${l.username}, overall ${Math.round(l.overall)} – open`}
+                    style={({ pressed }) => [styles.leader, pressed && { opacity: 0.8 }]}>
+                    <View style={[styles.rank, i === 0 && { backgroundColor: alpha(C.goldDeep, 0.3) }]}>
+                      <Txt v="h14" color={i === 0 ? C.gold : C.text}>
+                        {i + 1}
                       </Txt>
-                    </Txt>
-                    <Txt v="capBody" color={C.textMuted}>
-                      {l.run} · {l.ovr} OVR
-                    </Txt>
-                  </View>
-                </View>
-              ))}
-            </View>
+                    </View>
+                    <View style={styles.flex}>
+                      <Txt v="h16" numberOfLines={1}>
+                        @{l.username}
+                      </Txt>
+                      <Txt v="body" color={C.textMuted} numberOfLines={1}>
+                        {l.formation}
+                        {l.result ? ` · ${l.result.detail}` : ' · not played yet'}
+                      </Txt>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Txt v="h20" color={C.gold}>
+                        {Math.round(l.overall)}{' '}
+                        <Txt v="cap" color={C.textMuted}>
+                          OVR
+                        </Txt>
+                      </Txt>
+                      <Txt v="capBody" color={C.textMuted}>
+                        CHEM {l.chemistry}
+                      </Txt>
+                    </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            <Pressable
+              onPress={() => router.navigate('/ranks')}
+              accessibilityRole="button"
+              style={({ pressed }) => [styles.openRanks, pressed && { opacity: 0.8 }]}>
+              <Txt v="bodyBold" color={C.green}>
+                Open the full leaderboard
+              </Txt>
+              <Icon name="chevron_right" size={16} color={C.green} />
+            </Pressable>
           </View>
         )}
 
@@ -591,6 +627,13 @@ const styles = StyleSheet.create({
     borderRadius: R.md,
     backgroundColor: C.surface,
     boxShadow: SHADOW_SM,
+  },
+  openRanks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingTop: 4,
   },
   leader: {
     flexDirection: 'row',

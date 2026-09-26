@@ -26,7 +26,7 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 
 | # | Hol | Elem | Probléma | Javaslat |
 |---|---|---|---|---|
-| 10 🟠 | `app/explore.tsx:41-46`, `:286-327` | „Global 38-0 Vault” ranglista: `@ZizouMaster`, `@SanSiroKing`, `@CruyffVision` | Kitalált játékosok, „ONLINE SOON” jelzéssel – közben a **Ranks fülön már van valódi online ranglista**, így ez elavult és ellentmond neki | Lecserélni a valódi top csapatokra (`/api/squads`) vagy „Open Ranks” linkre |
+| 10 ✅ | `app/explore.tsx:41-46`, `:286-327` | „Global 38-0 Vault” ranglista: `@ZizouMaster`, `@SanSiroKing`, `@CruyffVision` | Kitalált játékosok, „ONLINE SOON” jelzéssel – közben a **Ranks fülön már van valódi online ranglista**, így ez elavult és ellentmond neki | Lecserélni a valódi top csapatokra (`/api/squads`) vagy „Open Ranks” linkre |
 | 11 🟠 | `app/explore.tsx:155-171` | „LINK TOPOLOGY / ACTIVE PITCH HARMONY”: Ronaldo 94 ST, Zidane 93 CAM, Pirlo 91 CM, „+4 PERFECT DUO” | Beégetett demó; az „ACTIVE” szó azt sugallja, hogy a saját pályád | „Example” feliratot kapjon, vagy a legutóbbi saját csapatból számolja |
 | 12 ✅ | `app/explore.tsx` | Formációkártyák | **Kész:** a kitalált „4-3-3 Attack”, „5★ Chem”, „Diff” helyett valódi formációk (4-3-3, 4-4-2 diamond, 4-2-3-1, 3-5-2) valódi DF/MF/FW számmal, változattal és kis pályarajzzal. | – |
 | 13 🟠 | `app/explore.tsx:103-110` | „V1.4 DATABASE” chip | Nincs mögötte verziózás | Kivenni, vagy a valódi adatbázis-méret (pl. „184k player seasons”) |
@@ -51,7 +51,7 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 | 22 🟡 | `components/league-tournament.tsx:362` | „Your 38 Fixtures” beégetve – 18 csapatos ligában (pl. Bundesliga) 34 meccs van; az alatta lévő gomb már a valódi számot írja | A valódi meccsszámot kiírni |
 | 23 🟡 | `app/index.tsx:584` | Pálya-címke „ARCADE 80S” – csak az első lerakott játékos évtizedéből, vegyes XI-nél is | „ARCADE MODE” vagy az évtizedek száma |
 | 24 🟡 | `components/draft-spin.tsx:161-183`, `:462-466` | Hálózati hibánál is ezt írja: „No squad imported for this club and decade yet” | Külön üzenet offline / szerverhiba esetén |
-| 25 🟡 | `app/explore.tsx:13`, `:116-127` | A „Leaderboard” szűrő-chip csak a kamu előnézetet (10.) mutatja, nem a valódi ranglistát | A 10. javításával együtt |
+| 25 ✅ | `app/explore.tsx:13`, `:116-127` | A „Leaderboard” szűrő-chip csak a kamu előnézetet (10.) mutatja, nem a valódi ranglistát | A 10. javításával együtt |
 | 26 🟡 | `components/home-landing.tsx:22` | „90 verified tactical formations” – a listában vicc-formációk is vannak (5-5-0, 1-1-4-4) | „~90 formations” |
 | 27 🟡 | `components/home-landing.tsx:79-84` | „ARCADE MODE” villám ikonnal – mód-jelvénynek látszik, de nincs másik mód, amire váltani lehetne | Rendben, ha csak felirat; esetleg halványabb stílus |
 | 28 🟡 | `components/daily-card.tsx:89-93` | Szabály-chipek (Locked 4-3-3, ligák, CHEM 70+) szűrőnek látszanak | Csak információ – elfogadható |

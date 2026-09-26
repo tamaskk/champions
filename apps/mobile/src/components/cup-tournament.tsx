@@ -3,6 +3,7 @@ import {
   seasonLabel,
   sideFromLineup,
   simulateCup,
+  squadInsight,
   type CupFieldResponse,
   type CupMatch,
   type CupResult,
@@ -16,6 +17,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { fetchCupField } from '@/api/client';
 import { Select } from '@/components/select';
 import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
+import { ResultInsight } from '@/components/result-insight';
 import { EndBar, TournamentShell, type ShellMode } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
 import type { ResultReport } from '@/game/online';
@@ -131,6 +133,22 @@ export function CupTournament({
   const [result, setResult] = useState<CupResult | null>(null);
   const [view, setView] = useState<View3>('path');
   const [simError, setSimError] = useState(false);
+  // The "why": your lines against the clubs you actually played.
+  const why = useMemo(() => {
+    const you = byId.get(YOUR_ID);
+    if (!result || !you) return null;
+    const mine = result.matches.filter(yoursIn);
+    const faced = [...new Set(mine.map((m) => (m.home === YOUR_ID ? m.away : m.home)))].flatMap((id) => {
+      const t = byId.get(id);
+      return t ? [t] : [];
+    });
+    return {
+      insight: squadInsight(you, faced),
+      goalsFor: mine.reduce((n, m) => n + fromYou(m).ours, 0),
+      goalsAgainst: mine.reduce((n, m) => n + fromYou(m).theirs, 0),
+      matches: mine.length,
+    };
+  }, [result, byId]);
   useEffect(() => {
     setResult(null);
     setView('path');
@@ -336,6 +354,12 @@ export function CupTournament({
       {result && field && !open && (
         <>
           <Verdict result={result} season={field.season} name={name} />
+          {why && (
+            <ResultInsight
+              insight={why.insight}
+              stats={{ goalsFor: why.goalsFor, goalsAgainst: why.goalsAgainst, matches: why.matches }}
+            />
+          )}
           <View style={styles.tabs}>
             {(
               [

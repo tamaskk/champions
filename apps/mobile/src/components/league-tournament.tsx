@@ -8,6 +8,7 @@ import {
   seasonLabel,
   sideFromLineup,
   simulateSeason,
+  squadInsight,
   weakestClub,
   type League,
   type LeagueTableResponse,
@@ -186,6 +187,8 @@ export function LeagueTournament({
         teams: all.map((t) => ({ id: t.id, name: t.name, rating: average(t.xi.map((p) => p.rating)) })),
         result,
         rounds: Math.max(...result.fixtures.map((f) => f.round)),
+        insight: squadInsight(you, teams),
+        bench: you.bench?.length ?? 0,
       });
       // The squad's result goes to the leaderboard now (it is decided); the player sees it matchday by
       // matchday, and the season record (XP, Hall of Fame) is written when the last one is shown.

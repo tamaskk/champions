@@ -360,3 +360,45 @@ export function matchEvents(
   const order = { goal: 0, yellow: 1, red: 2 };
   return events.sort((a, b) => a.minute - b.minute || order[a.type] - order[b.type]);
 }
+
+/** One line of a side against the same line of its opponents (mean ratings, chemistry included). */
+export type LineInsight = {
+  role: PlayerRole;
+  yours: number;
+  /** The opponents' average. */
+  field: number;
+  /**
+   * What the difference is worth in the match model, as a share of goals: attack lines (MF, FW)
+   * change the goals you score, defence lines (GK, DF) the goals you concede. +0.10 ≈ 10 % more
+   * scored (or fewer conceded) than with an average line.
+   */
+  effect: number;
+};
+
+export type SquadInsight = {
+  lines: LineInsight[];
+  /** The line that helped most / hurt most (by effect). */
+  best: LineInsight;
+  worst: LineInsight;
+  /** Chemistry's multiplier on every rating, minus 1 (e.g. +0.05). */
+  chemistry: number;
+};
+
+/**
+ * Why a squad did what it did: each line against the opponents' average, weighted by the fitted
+ * match model (MATCH_MODEL) so that a line only counts for what it really changes.
+ */
+export function squadInsight(you: MatchSide, opponents: readonly MatchSide[]): SquadInsight {
+  const own = lineStrengths(you.xi, you.factor ?? 1);
+  const others = opponents.map((o) => lineStrengths(o.xi, o.factor ?? 1));
+  const roles: PlayerRole[] = ['GK', 'DF', 'MF', 'FW'];
+  const lines = roles.map((role) => {
+    const field = others.length ? others.reduce((s, l) => s + l[role], 0) / others.length : own[role];
+    const diff = own[role] - field;
+    // Scoring: own coefficient; conceding: minus the opponent coefficient (a better keeper = fewer goals).
+    const log = MATCH_MODEL.own[role] * diff - MATCH_MODEL.opp[role] * diff;
+    return { role, yours: own[role], field, effect: Math.exp(log) - 1 };
+  });
+  const sorted = [...lines].sort((a, b) => b.effect - a.effect);
+  return { lines, best: sorted[0]!, worst: sorted[sorted.length - 1]!, chemistry: (you.factor ?? 1) - 1 };
+}

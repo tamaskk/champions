@@ -1,4 +1,4 @@
-import { LEAGUE_NAMES, seasonLabel, type League, type SeasonResult } from '@champion/shared';
+import { LEAGUE_NAMES, seasonLabel, type League, type SeasonResult, type SquadInsight } from '@champion/shared';
 import { useSyncExternalStore } from 'react';
 
 import { recordSeason } from './session';
@@ -30,6 +30,10 @@ export type LeagueSeasonSave = {
   /** The simulated season; your fixtures carry the whole match (`detail`). */
   result: SeasonResult;
   rounds: number;
+  /** Your lines against the league's average (the "why" under the final result). */
+  insight?: SquadInsight;
+  /** Substitutes on your bench. */
+  bench?: number;
   /** Matchdays shown so far (0 = none, `rounds` = season over). */
   revealed: number;
   /** The season record (XP, achievements, Hall of Fame) has been written. */

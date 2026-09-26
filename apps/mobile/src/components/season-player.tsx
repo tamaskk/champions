@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { MatchPlay, type Played, type WatchSpeed } from '@/components/match-play';
+import { ResultInsight } from '@/components/result-insight';
 import { EndBar } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
@@ -446,6 +447,30 @@ function SeasonCard({ save }: { save: LeagueSeasonSave }) {
     : null;
   const gold = you.position === 1;
 
+  // The "why": goals ranks in the league and your star man from your matches' events.
+  const rank = (better: (a: SeasonRow, b: SeasonRow) => number) =>
+    [...result.table].sort(better).findIndex((r) => r.id === YOUR_ID) + 1;
+  const involvement = new Map<string, { goals: number; assists: number }>();
+  for (const f of result.fixtures) {
+    if (!f.detail || !isYours(f)) continue;
+    const side = f.home === YOUR_ID ? 'home' : 'away';
+    for (const e of f.detail.events) {
+      if (e.type !== 'goal' || e.side !== side) continue;
+      const g = involvement.get(e.player) ?? { goals: 0, assists: 0 };
+      g.goals++;
+      involvement.set(e.player, g);
+      if (e.assist) {
+        const a = involvement.get(e.assist) ?? { goals: 0, assists: 0 };
+        a.assists++;
+        involvement.set(e.assist, a);
+      }
+    }
+  }
+  const star =
+    [...involvement.entries()]
+      .map(([name, g]) => ({ name, ...g }))
+      .sort((a, b) => b.goals + b.assists - (a.goals + a.assists) || b.goals - a.goals)[0] ?? null;
+
   return (
     <Animated.View entering={FadeIn.duration(300)} style={styles.trophyCard}>
       <Glow color={C.gold} opacity={0.15} size={200} style={{ right: -60, top: -60 }} />
@@ -504,6 +529,23 @@ function SeasonCard({ save }: { save: LeagueSeasonSave }) {
           </Txt>
         )}
       </View>
+      {save.insight && (
+        <ResultInsight
+          insight={save.insight}
+          stats={{
+            goalsFor: you.goalsFor,
+            goalsAgainst: you.goalsAgainst,
+            matches: you.played,
+            ranks: {
+              scored: rank((a, b) => b.goalsFor - a.goalsFor),
+              conceded: rank((a, b) => a.goalsAgainst - b.goalsAgainst),
+              teams,
+            },
+            bench: save.bench,
+            star,
+          }}
+        />
+      )}
     </Animated.View>
   );
 }

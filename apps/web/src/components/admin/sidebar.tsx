@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { adminLogout } from "@/app/admin-login/actions";
+
 import { CalendarIcon, DownloadIcon, FileIcon, GridIcon, ShieldIcon, UploadIcon, UsersIcon } from "./icons";
 
 const NAV = [
@@ -42,6 +44,12 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <form action={adminLogout}>
+        <button className="w-full rounded-xl px-3 py-2.5 text-left text-sm text-muted hover:bg-canvas/60 hover:text-ink">
+          Sign out
+        </button>
+      </form>
 
       <div className="mt-auto hidden rounded-2xl bg-canvas/70 p-5 lg:block">
         <div className="flex items-center gap-2 text-sm font-semibold text-ink">

@@ -197,7 +197,7 @@ back to demo players, so the game is playable from the start.
 |---|---|---|
 | `MONGODB_URI` | web, pipeline | MongoDB connection string |
 | `MONGODB_DB` | web, pipeline | Database name (default `champion`) |
-| `ADMIN_USER`, `ADMIN_PASSWORD` | web | HTTP Basic Auth for `/admin` (open in development if unset, locked in production) |
+| `ADMIN_USER`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` | web | Admin login at `/admin-login`; the secret signs the session cookie. Without a password nobody can open `/admin` |
 | `APIFY_TOKEN` | pipeline | Fetching Transfermarkt pages through Apify |
 | `API_FOOTBALL_KEY` | web | Optional, for recent seasons |
 | `REVENUECAT_WEBHOOK_AUTH` | web | Secret the RevenueCat webhook must send |
@@ -236,7 +236,7 @@ The draft and every tournament are full-screen flows started from Home
 
 `apps/web` is both the **admin panel** and the **backend** of the app.
 
-**Admin** (`/admin`, Basic Auth): dashboard with coverage per league and decade, clubs (sortable,
+**Admin** (`/admin`, login at `/admin-login` with the credentials from `.env`; 12-hour session): dashboard with coverage per league and decade, clubs (sortable,
 paginated, squad size per club season), players (filter by league, decade, position, nationality;
 sorted by rating), club and squad import (JSON, AI prompt, or the local Claude CLI), daily
 challenge scheduling.

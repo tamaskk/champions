@@ -14,16 +14,16 @@ import {
   type SquadImportError,
 } from "@champion/shared";
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 
-import { isAdminAuthorized } from "@/server/admin-auth";
+import { ADMIN_COOKIE, verifyAdminSession } from "@/server/admin-auth";
 import { LOCAL_CLAUDE_ENABLED, askClaude } from "@/server/claude-cli";
 import { deleteClubSeason, saveClubSeasons } from "@/server/club-data";
 import { deleteDaily, saveDailies } from "@/server/daily-data";
 import { deleteSquadPlayer, getClubSeason, saveSquad } from "@/server/squad-data";
 
 async function assertAdmin() {
-  if (!isAdminAuthorized((await headers()).get("authorization"))) {
+  if (!(await verifyAdminSession((await cookies()).get(ADMIN_COOKIE)?.value))) {
     throw new Error("Unauthorized");
   }
 }

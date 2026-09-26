@@ -11,7 +11,7 @@ pnpm workspaces + Turborepo. TypeScript everywhere.
 - `apps/mobile` – Expo (React Native, Expo Router). Has its own `CLAUDE.md`/`AGENTS.md` – follow them.
   - UI follows the Figma "Champion" design (dark only): tokens, fonts (Inter, Space Grotesk, Material Symbols icons) and shared UI in `src/design/`; custom pill tab bar in `src/components/pill-tabs.tsx`. Session records (Home "Your records", Explore "Hall of Fame") live in memory only: `src/game/session.ts`.
 - `apps/web` – Next.js (App Router). Backend API via route handlers in `src/app/api/**`. Deployed on Vercel. Has its own `AGENTS.md`.
-  - `/admin` – data admin (dashboard, clubs, JSON club import). Basic Auth via `src/proxy.ts` + `ADMIN_PASSWORD`; Server Actions re-check auth. Mongo access only in `src/server/**`.
+  - `/admin` – data admin (dashboard, clubs, JSON club import). Login at `/admin-login` with `ADMIN_USER` / `ADMIN_PASSWORD` from `.env` (HMAC-signed session cookie, `ADMIN_SESSION_SECRET`); `src/proxy.ts` guards every /admin page and every admin Server Action re-checks the session. Mongo access only in `src/server/**`.
 - `packages/shared` – `@champion/shared`: domain types/constants shared by both apps. Source-only (no build step); Next consumes it via `transpilePackages`.
 - `packages/pipeline` – `@champion/pipeline`: data ingestion CLI (tsx). Transfermarkt squad import: `pnpm pipeline tm:clubs` → `tm:squads` → `tm:keepers` → `tm:tables` → `tm:positions` → `elo` → `rate` (player ratings) → `coverage`. See its README.
 - `docs/` – research and design notes.

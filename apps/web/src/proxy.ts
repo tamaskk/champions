@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { isAdminAuthorized } from "@/server/admin-auth";
+import { ADMIN_COOKIE, verifyAdminSession } from "@/server/admin-auth";
 
-export function proxy(request: NextRequest) {
-  if (isAdminAuthorized(request.headers.get("authorization"))) return NextResponse.next();
-  return new NextResponse("Authentication required", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Champion admin", charset="UTF-8"' },
-  });
+/** Every /admin page needs a valid admin session; otherwise → the login page. */
+export async function proxy(request: NextRequest) {
+  if (await verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value)) return NextResponse.next();
+  const login = new URL("/admin-login", request.url);
+  login.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
+  return NextResponse.redirect(login);
 }
 
 export const config = {

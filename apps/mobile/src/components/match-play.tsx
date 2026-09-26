@@ -7,7 +7,7 @@ import {
   type MatchResult,
   type MatchSide,
 } from '@champion/shared';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -34,8 +34,12 @@ export type Played = {
 
 /** Live match clock: running through a half, waiting at half-time, or over. */
 type Clock = { minute: number; phase: 'first' | 'ht' | 'second' | 'ft' };
-/** Real time per match minute in a live match (45 minutes ≈ 20 s). */
+/** Real time per match minute in a live match (45 minutes ≈ 20 s; fast: ≈ 4 s). */
 const TICK_MS = 450;
+const FAST_TICK_MS = 90;
+
+/** How a match already played is shown: result at once, live, or live at fast speed. */
+export type WatchSpeed = 'quick' | 'live' | 'fast';
 
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 const initialOf = (name: string) => {
@@ -95,6 +99,8 @@ type Props = {
   hideEndBar?: boolean;
   /** Shown instead of the kick-off buttons until the match can start (head-to-head search). */
   preMatch?: ReactNode;
+  /** A match that is already decided (a league matchday): shown at once, no kick-off buttons. */
+  preplayed?: { played: Played; speed: WatchSpeed };
 };
 
 /**
@@ -119,11 +125,15 @@ export function MatchPlay({
   children,
   hideEndBar,
   preMatch,
+  preplayed,
 }: Props) {
-  const [played, setPlayed] = useState<Played | null>(null);
+  const [played, setPlayed] = useState<Played | null>(preplayed?.played ?? null);
   const [playing, setPlaying] = useState<'idle' | 'loading' | 'error'>('idle');
   // null = quick sim (everything shown at once).
-  const [clock, setClock] = useState<Clock | null>(null);
+  const [clock, setClock] = useState<Clock | null>(
+    preplayed && preplayed.speed !== 'quick' ? { minute: 0, phase: 'first' } : null,
+  );
+  const [fast, setFast] = useState(preplayed?.speed === 'fast');
   const running = clock?.phase === 'first' || clock?.phase === 'second';
   useEffect(() => {
     if (!running) return;
@@ -135,22 +145,22 @@ export function MatchPlay({
         if (minute >= 90) return { minute: 90, phase: 'ft' };
         return { ...c, minute };
       });
-    }, TICK_MS);
+    }, fast ? FAST_TICK_MS : TICK_MS);
     return () => clearInterval(timer);
-  }, [running]);
+  }, [running, fast]);
 
   // Report the result when it is known to the player: at once, or at full time.
-  const [reported, setReported] = useState(false);
+  const reported = useRef(false);
   useEffect(() => {
-    if (!played || reported || (clock && clock.phase !== 'ft')) return;
-    setReported(true);
+    if (!played || reported.current || (clock && clock.phase !== 'ft')) return;
+    reported.current = true;
     const ours = played.events.filter(
       (e) => e.type === 'goal' && e.side === (played.youAtHome ? 'home' : 'away'),
     ).length;
     const total = played.result.homeGoals + played.result.awayGoals;
     const theirs = total - ours;
     onResult?.({ outcome: ours > theirs ? 'win' : ours === theirs ? 'draw' : 'loss', yours: ours, theirs, played });
-  }, [played, clock, reported, onResult]);
+  }, [played, clock, onResult]);
 
   const play = async (live: boolean) => {
     setPlaying('loading');
@@ -209,12 +219,22 @@ export function MatchPlay({
             onPress={() => setClock({ minute: 45, phase: 'second' })}
           />
         ) : (
-          <Btn
-            kind="dark"
-            icon="arrow_forward"
-            label="Skip to full time"
-            onPress={() => setClock({ minute: 90, phase: 'ft' })}
-          />
+          <View style={styles.playRow}>
+            <Btn
+              kind="dark"
+              icon={fast ? 'slow_motion_video' : 'fast_forward'}
+              label={fast ? 'Normal speed' : 'Fast'}
+              onPress={() => setFast((f) => !f)}
+              style={styles.flex}
+            />
+            <Btn
+              kind="dark"
+              icon="arrow_forward"
+              label="Skip to FT"
+              onPress={() => setClock({ minute: 90, phase: 'ft' })}
+              style={styles.flex}
+            />
+          </View>
         )
       ) : played ? (
         hideEndBar ? null : (

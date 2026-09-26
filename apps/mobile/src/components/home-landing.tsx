@@ -8,6 +8,7 @@ import { DailyCard } from '@/components/daily-card';
 import { Shop } from '@/components/shop';
 import { useWallet } from '@/game/wallet';
 import { setPendingChallenge, usePendingChallenge } from '@/game/challenge';
+import { leagueSeasonTitle, useLeagueSeason } from '@/game/league-season';
 import { useRecords } from '@/game/session';
 import { LegalNote } from '@/components/legal-note';
 import { Icon } from '@/design/icon';
@@ -38,8 +39,11 @@ export function HomeLanding({
   onStart,
   onDaily,
   onPractice,
+  onContinueSeason,
 }: {
   onStart: () => void;
+  /** Opens the saved league season (played matchday by matchday). */
+  onContinueSeason?: () => void;
   onDaily: (d: DailyResponse) => void;
   onPractice?: (d: DailyResponse) => void;
 }) {
@@ -53,6 +57,7 @@ export function HomeLanding({
   const last = records.squads[0];
   const run = records.bestRun;
   const challenge = usePendingChallenge();
+  const season = useLeagueSeason();
 
   return (
     <View style={styles.screen}>
@@ -135,6 +140,30 @@ export function HomeLanding({
               <Icon name="close" size={16} color={C.textMuted} />
             </Pressable>
           </View>
+        )}
+
+        {/* A league season in progress (saved after every matchday) */}
+        {season && onContinueSeason && (
+          <Pressable
+            onPress={onContinueSeason}
+            accessibilityRole="button"
+            accessibilityLabel={`${season.recorded ? 'See the result of' : 'Continue'} ${leagueSeasonTitle(season)}`}
+            style={({ pressed }) => [styles.seasonBanner, pressed && { opacity: 0.8 }]}>
+            <Icon name={season.recorded ? 'emoji_events' : 'play_arrow'} size={20} color={C.green} />
+            <View style={styles.flex}>
+              <Txt v="capUpper" color={C.green}>
+                {season.recorded ? 'SEASON FINISHED' : 'SEASON IN PROGRESS'}
+              </Txt>
+              <Txt v="bodySemi" numberOfLines={1}>
+                {leagueSeasonTitle(season)} ·{' '}
+                {season.recorded ? 'see the final table' : `matchday ${season.revealed}/${season.rounds}`}
+              </Txt>
+            </View>
+            <Txt v="bodyBold" color={C.green}>
+              {season.recorded ? 'View' : 'Continue'}
+            </Txt>
+            <Icon name="chevron_right" size={18} color={C.green} />
+          </Pressable>
         )}
 
         {/* Regular game */}
@@ -326,6 +355,16 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
     borderWidth: 1,
     borderColor: alpha(C.gold, 0.45),
+  },
+  seasonBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: R.md,
+    borderWidth: 1,
+    borderColor: alpha(C.green, 0.45),
+    backgroundColor: alpha(C.green, 0.08),
   },
   challengeBanner: {
     flexDirection: 'row',

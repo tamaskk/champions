@@ -11,23 +11,23 @@ import {
   weakestClub,
   type League,
   type LeagueTableResponse,
-  type SeasonResult,
   type SeasonTeam,
 } from '@champion/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeOut } from 'react-native-reanimated';
 
 import { fetchSeasonXIs, fetchTable } from '@/api/client';
+import { SeasonPlayer, TableRow, ordinal, signed } from '@/components/season-player';
 import { Select } from '@/components/select';
 import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
-import { EndBar, TournamentShell, type ShellMode } from '@/components/tournament-shell';
+import { TournamentShell, type ShellMode } from '@/components/tournament-shell';
+import { YOUR_ID, leagueSeasonTitle, startLeagueSeason, useLeagueSeason } from '@/game/league-season';
 import type { ResultReport } from '@/game/online';
-import { recordSeason } from '@/game/session';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
-import { Btn, Chip, Glow, SHADOW_LG, SHADOW_SM } from '@/design/ui';
+import { Btn, SHADOW_SM } from '@/design/ui';
 import type { DraftPlayer } from '@/mocks/players';
 import { teamName } from '@/game/progress';
 
@@ -56,9 +56,8 @@ type Props = {
 };
 
 type Load = { status: 'idle' | 'loading' | 'error' } | { status: 'ready'; table: LeagueTableResponse };
-type Sim = { status: 'idle' | 'loading' | 'error' } | { status: 'done'; result: SeasonResult };
+type Sim = 'idle' | 'loading' | 'error' | 'started';
 
-const YOUR_ID = '__you__';
 const SPIN_DURATION = 2600;
 
 const leagueByLabel = (label: string) => LEAGUES.find((l) => LEAGUE_ADJECTIVES[l] === label)!;
@@ -67,18 +66,17 @@ const seasonsOf = (league: League) => {
   return Array.from({ length: last - leagueFirstSeason(league) + 1 }, (_, i) => last - i);
 };
 const randomOf = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)];
-const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
-const ordinal = (n: number) => {
-  const s =
-    n % 100 >= 11 && n % 100 <= 13 ? 'th' : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th');
-  return `${n}${s}`;
+const average = (xs: (number | null)[]) => {
+  const known = xs.filter((x): x is number => x !== null);
+  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
 };
 const shortSeason = (season: number) => `'${seasonLabel(season).slice(2)}`;
 
 /**
  * League mode: a real league season in which your XI takes the place of the club that finished
- * last. Shows that season's real table, then simulates the whole season: every club plays every
- * other club home and away with the match engine (your XI included).
+ * last. Shows that season's real table, then simulates the whole season (every club plays every
+ * other club home and away with the match engine, your XI included) and hands it to SeasonPlayer,
+ * which reveals it matchday by matchday and saves it so it can be continued later.
  */
 export function LeagueTournament({
   mode,
@@ -148,18 +146,14 @@ export function LeagueTournament({
   const replaced = table ? weakestClub(table.rows) : null;
   const seasonItems = useMemo(() => (league ? seasonsOf(league).map(seasonLabel) : ['?']), [league]);
 
-  // ---- Season simulation.
-  const [sim, setSim] = useState<Sim>({ status: 'idle' });
-  const [showFixtures, setShowFixtures] = useState(false);
+  // ---- Season: simulated in full at kick-off, then played matchday by matchday (SeasonPlayer).
+  const [sim, setSim] = useState<Sim>('idle');
+  const saved = useLeagueSeason();
   const xisCache = useRef<{ key: string; teams: SeasonTeam[] } | null>(null);
-  useEffect(() => {
-    setSim({ status: 'idle' });
-    setShowFixtures(false);
-  }, [table]);
 
-  const simulate = async () => {
+  const startSeason = async () => {
     if (!table || !replaced) return;
-    setSim({ status: 'loading' });
+    setSim('loading');
     try {
       const key = `${table.league}-${table.season}`;
       let teams = xisCache.current?.key === key ? xisCache.current.teams : null;
@@ -176,19 +170,26 @@ export function LeagueTournament({
         lineup.map((p) => (p ? { ...p, rating: p.rating ?? null } : null)),
         bench.map((p) => (p ? { ...p, rating: p.rating ?? null } : null)),
       );
-      const result = simulateSeason([...teams, { ...you, id: YOUR_ID }], pointsForWin(table.league, table.season));
+      const all = [...teams, { ...you, id: YOUR_ID }];
+      const result = simulateSeason(all, pointsForWin(table.league, table.season), Math.random, {
+        detailFor: YOUR_ID,
+      });
+      startLeagueSeason({
+        league: table.league,
+        season: table.season,
+        squadId,
+        teamName: teamName(),
+        formation,
+        overall,
+        chemistry,
+        replaced: replaced.club,
+        teams: all.map((t) => ({ id: t.id, name: t.name, rating: average(t.xi.map((p) => p.rating)) })),
+        result,
+        rounds: Math.max(...result.fixtures.map((f) => f.round)),
+      });
+      // The squad's result goes to the leaderboard now (it is decided); the player sees it matchday by
+      // matchday, and the season record (XP, Hall of Fame) is written when the last one is shown.
       const row = result.table.find((r) => r.id === YOUR_ID)!;
-      if (squadId !== null) {
-        recordSeason(squadId, {
-          league: table.league,
-          label: `${LEAGUE_NAMES[table.league].split(' / ')[0]} ${shortSeason(table.season)}`,
-          won: row.won,
-          drawn: row.drawn,
-          lost: row.lost,
-          points: row.points,
-          position: row.position,
-        });
-      }
       const clubs = result.table.length;
       onResult?.({
         mode: 'league',
@@ -197,13 +198,20 @@ export function LeagueTournament({
         outcome:
           row.position === 1 ? 'champion' : row.position <= 4 ? 'top' : row.position <= clubs / 2 ? 'mid' : 'out',
       });
-      setSim({ status: 'done', result });
+      setSim('started');
       onFinished();
     } catch {
-      setSim({ status: 'error' });
+      setSim('error');
     }
   };
-  const simResult = sim.status === 'done' ? sim.result : null;
+
+  if (sim === 'started' && saved) {
+    return (
+      <TournamentShell title={leagueSeasonTitle(saved)} onBack={onBack}>
+        <SeasonPlayer save={saved} onNewGame={onNewGame} onExit={onExit} />
+      </TournamentShell>
+    );
+  }
 
   return (
     <TournamentShell
@@ -212,7 +220,7 @@ export function LeagueTournament({
       mode="league"
       onMode={onMode}>
       {/* Pick or spin the league season */}
-      {!simResult && (
+      {(
         <View style={styles.card}>
           <View style={styles.segment}>
             {(['pick', 'random'] as const).map((m) => (
@@ -351,343 +359,77 @@ export function LeagueTournament({
         </View>
       )}
 
-      {table && simResult && !open && <SeasonCard league={table.league} season={table.season} result={simResult} />}
-
       {table && replaced && !open && (
         <View style={styles.standings}>
           <View style={[styles.between, { paddingBottom: 4 }]}>
             <View style={[styles.row4, styles.flexShrink]}>
               <Icon name="leaderboard" size={17} color={C.green} />
               <Txt v="h20" style={styles.flexShrink}>
-                {simResult ? (showFixtures ? 'Your 38 Fixtures' : 'Final Standings') : 'Real Final Table'}
+                Real Final Table
               </Txt>
             </View>
             <Txt v="cap" color={C.textDim} style={{ textAlign: 'right' }}>
-              {simResult
-                ? `MATCHDAY ${simResult.table[0]?.played}/${simResult.table[0]?.played}`
-                : `${LEAGUE_NAMES[table.league].split(' / ')[0]} ${shortSeason(table.season)}`}
+              {LEAGUE_NAMES[table.league].split(' / ')[0]} {shortSeason(table.season)}
             </Txt>
           </View>
-          {!simResult && (
-            <Txt v="body" color={C.textMuted}>
-              {teamName()} (OVR {Math.round(overall)} · CHEM {chemistry}) replaces {replaced.club}, who finished last.
-            </Txt>
-          )}
+          <Txt v="body" color={C.textMuted}>
+            {teamName()} (OVR {Math.round(overall)} · CHEM {chemistry}) replaces {replaced.club}, who finished last.
+          </Txt>
 
-          {simResult && showFixtures ? (
-            <Fixtures result={simResult} />
-          ) : (
-            <View style={styles.table}>
-              <TableRow head cells={['POS', 'CLUB', 'P', 'W', 'D', 'L', 'GD', 'PTS']} />
-              {simResult
-                ? simResult.table.map((r, i) => (
-                    <TableRow
-                      key={r.id}
-                      yours={r.id === YOUR_ID}
-                      zebra={i % 2 === 1}
-                      cells={[
-                        String(r.position),
-                        r.id === YOUR_ID ? teamName() : r.name,
-                        String(r.played),
-                        String(r.won),
-                        String(r.drawn),
-                        String(r.lost),
-                        signed(r.goalsFor - r.goalsAgainst),
-                        String(r.points),
-                      ]}
-                    />
-                  ))
-                : table.rows.map((r, i) => {
-                    const yours = r.clubSlug === replaced.clubSlug;
-                    return (
-                      <TableRow
-                        key={r.clubSlug}
-                        yours={yours}
-                        zebra={i % 2 === 1}
-                        cells={
-                          yours
-                            ? ['–', teamName(), String(r.played), '–', '–', '–', '–', '–']
-                            : [
-                                String(r.position),
-                                r.club,
-                                String(r.played),
-                                String(r.won),
-                                String(r.drawn),
-                                String(r.lost),
-                                signed(r.goalsFor - r.goalsAgainst),
-                                String(r.points),
-                              ]
-                        }
-                      />
-                    );
-                  })}
-            </View>
-          )}
+          <View style={styles.table}>
+            <TableRow head cells={['POS', 'CLUB', 'P', 'W', 'D', 'L', 'GD', 'PTS']} />
+            {table.rows.map((r, i) => {
+              const yours = r.clubSlug === replaced.clubSlug;
+              return (
+                <TableRow
+                  key={r.clubSlug}
+                  yours={yours}
+                  zebra={i % 2 === 1}
+                  cells={
+                    yours
+                      ? ['–', teamName(), String(r.played), '–', '–', '–', '–', '–']
+                      : [
+                          String(r.position),
+                          r.club,
+                          String(r.played),
+                          String(r.won),
+                          String(r.drawn),
+                          String(r.lost),
+                          signed(r.goalsFor - r.goalsAgainst),
+                          String(r.points),
+                        ]
+                  }
+                />
+              );
+            })}
+          </View>
 
-          {sim.status === 'error' && (
+          {sim === 'error' && (
             <Txt v="bodySemi" color={C.red} style={styles.center}>
               Couldn&apos;t load the clubs&apos; squads.
             </Txt>
           )}
-          <View style={[styles.row8, { paddingTop: 8 }]}>
-            {!simResult && (
-              <Btn
-                kind="blue"
-                icon="play_arrow"
-                label={sim.status === 'loading' ? 'Simulating…' : 'Simulate season'}
-                height={48}
-                radius={R.sm}
-                disabled={sim.status === 'loading'}
-                onPress={simulate}
-                style={styles.flex}
-              />
-            )}
-            {simResult && (
-              <Btn
-                kind="gold"
-                icon={showFixtures ? 'leaderboard' : 'calendar_month'}
-                label={
-                  showFixtures
-                    ? 'Standings'
-                    : `View ${simResult.fixtures.filter((f) => f.home === YOUR_ID || f.away === YOUR_ID).length} Fixtures`
-                }
-                height={48}
-                radius={R.sm}
-                onPress={() => setShowFixtures((v) => !v)}
-                style={styles.flex}
-              />
-            )}
-          </View>
+          {saved && !saved.recorded && (
+            <Txt v="body" color={C.gold} style={styles.center}>
+              Starting replaces your unfinished {leagueSeasonTitle(saved)} (matchday {saved.revealed}/{saved.rounds}).
+            </Txt>
+          )}
+          <Btn
+            kind="blue"
+            icon="play_arrow"
+            label={sim === 'loading' ? 'Simulating…' : 'Start the season'}
+            sub="Matchday by matchday, or straight to the end"
+            height={52}
+            radius={R.sm}
+            disabled={sim === 'loading'}
+            onPress={startSeason}
+          />
           <Txt v="capBody" color={C.textDim} style={styles.center}>
-            {simResult
-              ? `Every club played every other club home and away · ${simResult.pointsForWin} points for a win`
-              : 'The simulation plays every fixture again, your XI included.'}
+            The simulation plays every fixture again, your XI included. Saved as you go – continue any time from Home.
           </Txt>
         </View>
       )}
-      {simResult && <EndBar onNewGame={onNewGame} onExit={onExit} />}
     </TournamentShell>
-  );
-}
-
-/** The simulated season's verdict: trophy card, record strip, your top scorers. */
-function SeasonCard({ league, season, result }: { league: League; season: number; result: SeasonResult }) {
-  const you = result.table.find((r) => r.id === YOUR_ID)!;
-  const teams = result.table.length;
-  const perfect = you.won === you.played;
-  const maxPoints = you.played * result.pointsForWin;
-  const [pill, verdict, note] = perfect
-    ? ['THE HOLY GRAIL', `Perfect Season! ${you.won}-0 🏆`, 'Historical record unlocked · No draws, no defeats.']
-    : you.position === 1 && you.lost === 0
-      ? ['INVINCIBLES', 'Champions – unbeaten! 🏆', 'Not a single defeat all season.']
-      : you.position === 1
-        ? ['CHAMPIONS', 'Champions! 🏆', `${you.lost} defeat${you.lost === 1 ? '' : 's'} on the way to the title.`]
-        : you.lost === 0
-          ? ['UNBEATEN', `Unbeaten, but ${ordinal(you.position)}`, 'Too many draws to take the title.']
-          : you.position > teams - 3
-            ? ['RELEGATION ZONE', `${ordinal(you.position)} – going down`, 'Back to the draft board.']
-            : ['SEASON OVER', `Finished ${ordinal(you.position)}`, `${you.won} wins from ${you.played} matches.`];
-  const top = result.scorers.filter((s) => s.teamId === YOUR_ID).slice(0, 3);
-  const leagueTop = result.scorers[0];
-  const topName = leagueTop
-    ? leagueTop.teamId === YOUR_ID
-      ? teamName()
-      : result.table.find((r) => r.id === leagueTop.teamId)?.name
-    : null;
-  const gold = you.position === 1;
-
-  return (
-    <Animated.View entering={FadeIn.duration(300)} style={styles.trophyCard}>
-      <Glow color={C.gold} opacity={0.15} size={200} style={{ right: -60, top: -60 }} />
-      <View style={styles.between}>
-        <View style={[styles.row4, styles.flexShrink]}>
-          <Icon name="military_tech" size={19} color={C.gold} />
-          <Txt v="h20" style={styles.flexShrink}>
-            Simulated {LEAGUE_NAMES[league].split(' / ')[0]} {shortSeason(season)}
-          </Txt>
-        </View>
-        <Chip
-          label="CAMPAIGN COMPLETED"
-          color={C.onGold}
-          bg={C.goldDeep}
-          radius={R.pill}
-          style={{ paddingVertical: 2 }}
-        />
-      </View>
-      <View style={styles.victory}>
-        <View
-          style={[
-            styles.grail,
-            {
-              backgroundColor: gold ? C.gold : C.surface4,
-              boxShadow: gold ? `0px 0px 10px ${alpha(C.gold, 0.45)}` : undefined,
-            },
-          ]}>
-          <Icon name="emoji_events" size={14} color={gold ? C.onGoldDark : C.text} />
-          <Txt
-            v="num13"
-            color={gold ? C.onGoldDark : C.text}
-            style={{ textTransform: 'uppercase', letterSpacing: 0.325 }}>
-            {pill}
-          </Txt>
-        </View>
-        <Txt v="h28" color={gold ? C.gold : C.text} style={styles.center}>
-          {verdict}
-        </Txt>
-        <Txt v="body14" color={C.textMuted} style={styles.center}>
-          {note}
-        </Txt>
-        <View style={styles.strip}>
-          <StripItem label="RECORD" value={`${you.won}W ${you.drawn}D ${you.lost}L`} color={C.green} />
-          <StripItem
-            label="GOAL DIFF"
-            value={signed(you.goalsFor - you.goalsAgainst)}
-            suffix={`(${you.goalsFor}:${you.goalsAgainst})`}
-            color={C.text}
-          />
-          <StripItem
-            label="POINTS"
-            value={String(you.points)}
-            suffix={you.points === maxPoints ? 'MAX' : `/${maxPoints}`}
-            color={C.gold}
-          />
-        </View>
-        {top.length > 0 && (
-          <Txt v="body" color={C.text} style={styles.center}>
-            ⚽ {top.map((s) => `${s.name} ${s.goals}`).join(' · ')}
-          </Txt>
-        )}
-        {leagueTop && (
-          <Txt v="body" color={C.textMuted} style={styles.center}>
-            Top scorer: {leagueTop.name} ({topName}) {leagueTop.goals}
-          </Txt>
-        )}
-      </View>
-    </Animated.View>
-  );
-}
-
-function StripItem({ label, value, suffix, color }: { label: string; value: string; suffix?: string; color: string }) {
-  return (
-    <View style={styles.stripItem}>
-      <Txt v="cap" color={C.textMuted}>
-        {label}
-      </Txt>
-      <Txt v="h20" color={color} style={styles.center}>
-        {value}
-        {suffix ? (
-          <Txt v="bodySemi" color={C.textDim}>
-            {' '}
-            {suffix}
-          </Txt>
-        ) : null}
-      </Txt>
-    </View>
-  );
-}
-
-// Column widths of the table (12-column grid in the design: pos 1, club 5, stats 1 each).
-const COLS = [1, 5, 1, 1, 1, 1, 1.2, 1.2];
-
-function TableRow({
-  cells,
-  head,
-  yours,
-  zebra,
-}: {
-  cells: string[];
-  head?: boolean;
-  yours?: boolean;
-  zebra?: boolean;
-}) {
-  return (
-    <View style={[styles.tr, head ? styles.trHead : yours ? styles.trYours : zebra ? styles.trZebra : null]}>
-      {cells.map((c, i) => (
-        <View
-          key={i}
-          style={[
-            { flex: COLS[i] },
-            i === 1
-              ? styles.tdLeft
-              : i === 0
-                ? styles.tdLeft
-                : i === cells.length - 1
-                  ? styles.tdRight
-                  : styles.tdCenter,
-          ]}>
-          {i === 1 && yours ? (
-            <View style={styles.row4}>
-              <Icon name="star" size={13} color={C.blueLight} />
-              <Txt v="num13" color={C.blueLight}>
-                {c}
-              </Txt>
-            </View>
-          ) : (
-            <Txt
-              v={head ? 'capBody' : i === 1 ? 'bodySemi' : i === 0 || i === cells.length - 1 ? 'bodyBold' : 'body'}
-              numberOfLines={1}
-              style={[
-                head && { letterSpacing: 0.5 },
-                i === 1 && !head && { fontFamily: 'SpaceGrotesk_600SemiBold', letterSpacing: 0 },
-                i === cells.length - 1 && yours && { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13 },
-              ]}
-              color={
-                head
-                  ? C.textMuted
-                  : yours
-                    ? i === cells.length - 1
-                      ? C.gold
-                      : i === 0
-                        ? C.blueLight
-                        : i === 3 || i === 6
-                          ? C.green
-                          : C.text
-                    : i === 0 || i === 4 || i === 5
-                      ? C.textMuted
-                      : C.text
-              }>
-              {c}
-            </Txt>
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/** Your fixtures: round, opponent (vs = home, @ = away), score, W/D/L. */
-function Fixtures({ result }: { result: SeasonResult }) {
-  const names = new Map(result.table.map((r) => [r.id, r.name]));
-  return (
-    <View style={styles.table}>
-      {result.fixtures
-        .filter((f) => f.home === YOUR_ID || f.away === YOUR_ID)
-        .map((f, i) => {
-          const home = f.home === YOUR_ID;
-          const ours = home ? f.homeGoals : f.awayGoals;
-          const theirs = home ? f.awayGoals : f.homeGoals;
-          const mark = ours > theirs ? 'W' : ours === theirs ? 'D' : 'L';
-          const color = mark === 'W' ? C.green : mark === 'D' ? C.gold : C.red;
-          return (
-            <View key={f.round} style={[styles.tr, i % 2 === 1 && styles.trZebra]}>
-              <Txt v="bodyBold" color={C.textMuted} style={{ width: 28 }}>
-                {f.round}
-              </Txt>
-              <Txt v="bodySemi" numberOfLines={1} style={styles.flex}>
-                {home ? 'vs' : '@'} {names.get(home ? f.away : f.home)}
-              </Txt>
-              <Txt v="num13" style={{ width: 44, textAlign: 'center' }}>
-                {ours}–{theirs}
-              </Txt>
-              <View style={[styles.mark, { backgroundColor: alpha(color, 0.2) }]}>
-                <Txt v="cap" color={color}>
-                  {mark}
-                </Txt>
-              </View>
-            </View>
-          );
-        })}
-    </View>
   );
 }
 
@@ -797,46 +539,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.gold,
     boxShadow: `0px 0px 8px ${C.gold}`,
   },
-  trophyCard: {
-    gap: 8,
-    padding: 16,
-    borderRadius: R.md,
-    overflow: 'hidden',
-    experimental_backgroundImage: `linear-gradient(to bottom, ${C.surface3}, ${C.surface2})`,
-    boxShadow: SHADOW_LG,
-  },
-  victory: {
-    alignItems: 'center',
-    gap: 4,
-    padding: 16,
-    borderRadius: R.md,
-    backgroundColor: C.deep,
-  },
-  grail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    borderRadius: R.pill,
-  },
-  strip: {
-    width: '100%',
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 12,
-    marginBottom: 4,
-    paddingTop: 8,
-    paddingBottom: 4,
-    paddingHorizontal: 4,
-    borderRadius: R.sm,
-    backgroundColor: alpha(C.surface3, 0.4),
-  },
-  stripItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
   standings: {
     gap: 8,
     padding: 16,
@@ -848,36 +550,5 @@ const styles = StyleSheet.create({
     borderRadius: R.sm,
     overflow: 'hidden',
     backgroundColor: C.deep,
-  },
-  tr: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  trHead: {
-    paddingVertical: 4,
-    backgroundColor: C.surface2,
-  },
-  trYours: {
-    backgroundColor: alpha(C.blue, 0.15),
-  },
-  trZebra: {
-    backgroundColor: alpha(C.surface2, 0.3),
-  },
-  tdLeft: {
-    alignItems: 'flex-start',
-  },
-  tdCenter: {
-    alignItems: 'center',
-  },
-  tdRight: {
-    alignItems: 'flex-end',
-  },
-  mark: {
-    width: 24,
-    alignItems: 'center',
-    paddingVertical: 2,
-    borderRadius: R.xs,
   },
 });

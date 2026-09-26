@@ -78,7 +78,7 @@ attack) against the opponent's. The stronger side wins as often as it did in rea
 | Mode | What happens |
 |---|---|
 | **Match** | Your XI against one real club season, home, away or neutral; quick sim or a live 90-minute clock with goals, assists and cards. |
-| **League / Random League** | Your XI replaces the last-placed club of a real season; a full double round-robin with table, fixtures and top scorers. Your bench rotates in when starters need a rest. |
+| **League / Random League** | Your XI replaces the last-placed club of a real season; a full double round-robin with table, fixtures and top scorers. Played matchday by matchday – watch your match as a result, fast or live, or jump straight to the final table – and saved after every matchday, so you can continue it from Home at any time. Your bench rotates in when starters need a rest. |
 | **Champions League / Random** | The season's 31 strongest clubs (by Elo) + your XI: pots, 8 groups, two-legged knockouts with extra time and penalties, a neutral final. |
 | **Legends** | Beat legendary teams (Sacchi's Milan, Guardiola's Barcelona, …) and collect them. |
 | **Daily Challenge** | One themed challenge a day with fixed rules and seeded reels – everyone gets the same draw. |
@@ -228,6 +228,7 @@ The draft and every tournament are full-screen flows started from Home
 | `wallet.ts` | Mirror of the server wallet; asks the server for coin claims |
 | `user.ts` | Guest / registered account (userId, username, email) |
 | `session.ts` | Records and Hall of Fame |
+| `league-season.ts` | The league season in progress (simulated at kick-off, revealed matchday by matchday) |
 | `daily.ts`, `legends.ts` | Daily attempts and the legends collection |
 | `storage.ts` | Small JSON files on the device (localStorage on web) |
 

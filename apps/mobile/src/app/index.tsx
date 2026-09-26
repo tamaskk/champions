@@ -33,6 +33,7 @@ import { CupTournament } from '@/components/cup-tournament';
 import { ChallengeMatch } from '@/components/challenge-match';
 import { H2HMatch } from '@/components/h2h-match';
 import { LeagueTournament } from '@/components/league-tournament';
+import { SeasonPlayer } from '@/components/season-player';
 import { LegendsTournament } from '@/components/legends-tournament';
 import { MatchSetup } from '@/components/match-setup';
 import { useHideTabBar } from '@/components/pill-tabs';
@@ -48,6 +49,7 @@ import { autofillBench, autofillLineup } from '@/game/autofill';
 import { consumeItem, useWallet } from '@/game/wallet';
 import { usePendingChallenge } from '@/game/challenge';
 import { startDailyAttempt } from '@/game/daily';
+import { leagueSeasonTitle, useLeagueSeason } from '@/game/league-season';
 import { clearCurrentSquad, reportResult, setCurrentSquad } from '@/game/online';
 import { kitColor, recordProgress, useProgress } from '@/game/progress';
 import { BenchRow } from '@/components/bench-row';
@@ -124,7 +126,12 @@ export default function HomeScreen() {
   // The challenged squad, kept while its match is played (the pending one is cleared at kick-off).
   const [challenged, setChallenged] = useState<SquadDetail | null>(null);
 
-  useHideTabBar(drawing || showSummary || showTournaments);
+  // The saved league season, opened from Home ("Continue season").
+  const [resumeSeason, setResumeSeason] = useState(false);
+  const savedSeason = useLeagueSeason();
+  const showSeason = resumeSeason && !started && !!savedSeason;
+
+  useHideTabBar(drawing || showSummary || showTournaments || showSeason);
 
   const roles = formation ? formationRoles(formation) : [];
   const spots = formation ? formationLayout(formation).map((s, i) => ({ code: s.code, role: roles[i] })) : [];
@@ -437,13 +444,21 @@ export default function HomeScreen() {
 
   if (!started) {
     return (
-      <HomeLanding
-        onStart={() => startGame()}
-        onDaily={(d) => startGame(d)}
-        onPractice={async (d) => {
-          if (await consumeItem('daily-practice')) startGame(d, true);
-        }}
-      />
+      <>
+        <HomeLanding
+          onStart={() => startGame()}
+          onDaily={(d) => startGame(d)}
+          onPractice={async (d) => {
+            if (await consumeItem('daily-practice')) startGame(d, true);
+          }}
+          onContinueSeason={() => setResumeSeason(true)}
+        />
+        {showSeason && (
+          <TournamentShell title={leagueSeasonTitle(savedSeason)} onBack={() => setResumeSeason(false)}>
+            <SeasonPlayer save={savedSeason} onExit={() => setResumeSeason(false)} />
+          </TournamentShell>
+        )}
+      </>
     );
   }
 

@@ -1,5 +1,5 @@
 import type { League } from './leagues';
-import { simulateMatch, type MatchPlayer, type MatchSide } from './match';
+import { matchEvents, simulateMatch, type MatchEvent, type MatchPlayer, type MatchResult, type MatchSide } from './match';
 
 /**
  * A whole league season: every club plays every other club twice, once at home and once away,
@@ -41,6 +41,8 @@ export type SeasonFixture = {
   away: string;
   homeGoals: number;
   awayGoals: number;
+  /** The whole match (xG, chances, goals, cards) – only for the fixtures of `detailFor`. */
+  detail?: { result: MatchResult; events: MatchEvent[] };
 };
 
 export type Scorer = { teamId: string; name: string; goals: number };
@@ -111,29 +113,75 @@ export function roundRobin(ids: readonly string[]): { round: number; home: strin
   ];
 }
 
+/** Table order: points, goal difference, goals scored, name. */
+const compareRows = (x: SeasonRow, y: SeasonRow) =>
+  y.points - x.points ||
+  y.goalsFor - y.goalsAgainst - (x.goalsFor - x.goalsAgainst) ||
+  y.goalsFor - x.goalsFor ||
+  x.name.localeCompare(y.name);
+
+const emptyRow = (t: { id: string; name: string }): SeasonRow => ({
+  id: t.id,
+  name: t.name,
+  position: 0,
+  played: 0,
+  won: 0,
+  drawn: 0,
+  lost: 0,
+  goalsFor: 0,
+  goalsAgainst: 0,
+  points: 0,
+});
+
+function addResult(h: SeasonRow, a: SeasonRow, homeGoals: number, awayGoals: number, pointsWin: number) {
+  h.played++;
+  a.played++;
+  h.goalsFor += homeGoals;
+  h.goalsAgainst += awayGoals;
+  a.goalsFor += awayGoals;
+  a.goalsAgainst += homeGoals;
+  if (homeGoals > awayGoals) {
+    h.won++;
+    a.lost++;
+    h.points += pointsWin;
+  } else if (homeGoals < awayGoals) {
+    a.won++;
+    h.lost++;
+    a.points += pointsWin;
+  } else {
+    h.drawn++;
+    a.drawn++;
+    h.points++;
+    a.points++;
+  }
+}
+
+/** The table after the first `round` rounds of a simulated season (a season played matchday by matchday). */
+export function standingsAfter(
+  teams: readonly { id: string; name: string }[],
+  fixtures: readonly SeasonFixture[],
+  round: number,
+  pointsWin: number,
+): SeasonRow[] {
+  const rows = new Map(teams.map((t) => [t.id, emptyRow(t)]));
+  for (const f of fixtures) {
+    if (f.round > round) continue;
+    addResult(rows.get(f.home)!, rows.get(f.away)!, f.homeGoals, f.awayGoals, pointsWin);
+  }
+  const table = [...rows.values()].sort(compareRows);
+  table.forEach((r, i) => (r.position = i + 1));
+  return table;
+}
+
 export function simulateSeason(
   teams: readonly SeasonTeam[],
   pointsWin = 3,
   random: () => number = Math.random,
+  /** Keep the whole match (events included) for this team's fixtures, to watch them later. */
+  options: { detailFor?: string } = {},
 ): SeasonResult {
   const byId = new Map(teams.map((t) => [t.id, t]));
-  const rows = new Map<string, SeasonRow>(
-    teams.map((t) => [
-      t.id,
-      {
-        id: t.id,
-        name: t.name,
-        position: 0,
-        played: 0,
-        won: 0,
-        drawn: 0,
-        lost: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        points: 0,
-      },
-    ]),
-  );
+  const rows = new Map<string, SeasonRow>(teams.map((t) => [t.id, emptyRow(t)]));
   const scorers = new Map<string, Scorer>();
   const fixtures: SeasonFixture[] = [];
   const apps = new Map<string, { teamId: string; name: string; apps: number; sub: boolean }>();
@@ -154,33 +202,14 @@ export function simulateSeason(
     countApps(byId.get(f.home)!, home);
     countApps(byId.get(f.away)!, away);
     const result = simulateMatch(home, away, random);
+    const detailed = options.detailFor !== undefined && (f.home === options.detailFor || f.away === options.detailFor);
     fixtures.push({
       ...f,
       homeGoals: result.homeGoals,
       awayGoals: result.awayGoals,
+      ...(detailed ? { detail: { result, events: matchEvents(home, away, result, random) } } : {}),
     });
-    const h = rows.get(f.home)!;
-    const a = rows.get(f.away)!;
-    h.played++;
-    a.played++;
-    h.goalsFor += result.homeGoals;
-    h.goalsAgainst += result.awayGoals;
-    a.goalsFor += result.awayGoals;
-    a.goalsAgainst += result.homeGoals;
-    if (result.homeGoals > result.awayGoals) {
-      h.won++;
-      a.lost++;
-      h.points += pointsWin;
-    } else if (result.homeGoals < result.awayGoals) {
-      a.won++;
-      h.lost++;
-      a.points += pointsWin;
-    } else {
-      h.drawn++;
-      a.drawn++;
-      h.points++;
-      a.points++;
-    }
+    addResult(rows.get(f.home)!, rows.get(f.away)!, result.homeGoals, result.awayGoals, pointsWin);
     for (const g of result.goals) {
       const teamId = g.side === 'home' ? f.home : f.away;
       const key = `${teamId}|${g.scorer}`;
@@ -190,13 +219,7 @@ export function simulateSeason(
     }
   }
 
-  const table = [...rows.values()].sort(
-    (x, y) =>
-      y.points - x.points ||
-      y.goalsFor - y.goalsAgainst - (x.goalsFor - x.goalsAgainst) ||
-      y.goalsFor - x.goalsFor ||
-      x.name.localeCompare(y.name),
-  );
+  const table = [...rows.values()].sort(compareRows);
   table.forEach((r, i) => (r.position = i + 1));
   return {
     table,

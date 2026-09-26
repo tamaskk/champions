@@ -323,3 +323,31 @@ export type PlayerCareer = {
     rating: number | null;
   }[];
 };
+
+/** GET /api/search?q=mbappe – players and clubs whose name matches (accents ignored). */
+export type SearchResponse = {
+  players: {
+    name: string;
+    nameSlug: string;
+    tmPlayerId: number | null;
+    position: PlayerRole;
+    positions: string[];
+    nationality: string | null;
+    /** Best club-decade rating of his career. */
+    rating: number | null;
+    seasons: number;
+    /** Latest club (display name) and its league. */
+    club: string;
+    league: League;
+    from: number;
+    to: number;
+  }[];
+  clubs: {
+    club: string;
+    clubSlug: string;
+    leagues: League[];
+    decades: number[];
+    from: number;
+    to: number;
+  }[];
+};

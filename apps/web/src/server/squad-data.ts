@@ -1,6 +1,6 @@
 import "server-only";
 
-import { PLAYER_ROLES, type ChemistryProfile, type ClubStint, type League, type SquadPlayer, type SquadResponse, type PlayerCareer } from "@champion/shared";
+import { PLAYER_ROLES, type ChemistryProfile, type ClubStint, type League, type SquadPlayer, type SquadResponse, type PlayerCareer, slugify, type SearchResponse } from "@champion/shared";
 import { ObjectId } from "mongodb";
 
 import { clubSeasons, squadPlayers, type SquadPlayerDoc } from "./db";
@@ -176,4 +176,101 @@ export async function playerCareer(by: { tmPlayerId?: number; nameSlug?: string 
       rating: r.rating ?? null,
     })),
   };
+}
+
+const SEARCH_LIMIT = { players: 20, clubs: 8 };
+
+/** Players and clubs whose name contains `q` (compared as slugs, so accents don't matter). */
+export async function search(q: string): Promise<SearchResponse> {
+  const slug = slugify(q);
+  if (slug.length < 2) return { players: [], clubs: [] };
+  const pattern = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const [players, clubs] = await Promise.all([
+    (await squadPlayers())
+      .aggregate<SearchResponse["players"][number]>([
+        { $match: { nameSlug: { $regex: pattern } } },
+        { $sort: { season: -1 } },
+        {
+          $group: {
+            // One entry per person: Transfermarkt id when known, else the name.
+            _id: { $ifNull: ["$tmPlayerId", "$nameSlug"] },
+            name: { $first: "$name" },
+            nameSlug: { $first: "$nameSlug" },
+            tmPlayerId: { $first: "$tmPlayerId" },
+            position: { $first: "$position" },
+            positions: { $first: "$positions" },
+            nationality: { $first: "$nationality" },
+            rating: { $max: "$decadeRating" },
+            seasons: { $sum: 1 },
+            clubSlug: { $first: "$clubSlug" },
+            league: { $first: "$league" },
+            to: { $max: "$season" },
+            from: { $min: "$season" },
+          },
+        },
+        { $sort: { rating: -1, seasons: -1 } },
+        { $limit: SEARCH_LIMIT.players },
+        {
+          $lookup: {
+            from: "clubSeasons",
+            let: { league: "$league", season: "$to", clubSlug: "$clubSlug" },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ["$league", "$$league"] },
+                      { $eq: ["$season", "$$season"] },
+                      { $eq: ["$clubSlug", "$$clubSlug"] },
+                    ],
+                  },
+                },
+              },
+              { $project: { club: 1 } },
+            ],
+            as: "cs",
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            name: 1,
+            nameSlug: 1,
+            tmPlayerId: { $ifNull: ["$tmPlayerId", null] },
+            position: 1,
+            positions: { $ifNull: ["$positions", []] },
+            nationality: { $ifNull: ["$nationality", null] },
+            rating: { $ifNull: ["$rating", null] },
+            seasons: 1,
+            club: { $ifNull: [{ $first: "$cs.club" }, "$clubSlug"] },
+            league: 1,
+            from: 1,
+            to: 1,
+          },
+        },
+      ])
+      .toArray(),
+    (await clubSeasons())
+      .aggregate<SearchResponse["clubs"][number]>([
+        { $match: { clubSlug: { $regex: pattern } } },
+        { $sort: { season: -1 } },
+        {
+          $group: {
+            _id: "$clubSlug",
+            club: { $first: "$club" },
+            leagues: { $addToSet: "$league" },
+            decades: { $addToSet: "$decade" },
+            from: { $min: "$season" },
+            to: { $max: "$season" },
+            n: { $sum: 1 },
+          },
+        },
+        { $sort: { n: -1 } },
+        { $limit: SEARCH_LIMIT.clubs },
+        { $project: { _id: 0, clubSlug: "$_id", club: 1, leagues: 1, decades: { $sortArray: { input: "$decades", sortBy: 1 } }, from: 1, to: 1 } },
+      ])
+      .toArray(),
+  ]);
+  return { players, clubs };
 }

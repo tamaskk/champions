@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SearchSheet } from '@/components/search-sheet';
 import { useRecords } from '@/game/session';
 import { LegalNote } from '@/components/legal-note';
 import { Icon } from '@/design/icon';
@@ -84,6 +85,7 @@ export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const records = useRecords();
   const [filter, setFilter] = useState<Filter>('All');
+  const [searching, setSearching] = useState(false);
   const show = (f: Filter) => filter === 'All' || filter === f;
 
   return (
@@ -109,9 +111,14 @@ export default function ExploreScreen() {
                 style={{ paddingVertical: 2 }}
               />
             </View>
-            <View style={styles.search}>
+            <Pressable
+              onPress={() => setSearching(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Search players or clubs"
+              style={({ pressed }) => [styles.search, pressed && { opacity: 0.7 }]}>
               <Icon name="search" size={16} color={C.text} />
-            </View>
+            </Pressable>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
             {FILTERS.map((f) => (
@@ -371,6 +378,7 @@ export default function ExploreScreen() {
         )}
         <LegalNote />
       </ScrollView>
+      {searching && <SearchSheet onClose={() => setSearching(false)} />}
     </View>
   );
 }

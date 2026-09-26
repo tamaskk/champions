@@ -27,6 +27,7 @@ import {
   type AuthProfile,
   type LoginRequest,
   type RegisterRequest,
+  type SearchResponse,
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
@@ -228,3 +229,19 @@ export const loginAccount = (body: LoginRequest) => postJSON<AuthProfile | { err
 export const fetchProfile = (userId: string) => postJSON<AuthProfile>('/api/auth/me', { userId });
 export const changeAccountPassword = (userId: string, oldPassword: string, newPassword: string) =>
   postJSON<{ ok: boolean; error?: string }>('/api/auth/password', { userId, oldPassword, newPassword });
+
+// ---- Search (Explore)
+
+/** Players and clubs by name; accents don't matter ("mbappe", "koln"). */
+export async function fetchSearch(q: string): Promise<SearchResponse> {
+  const res = await fetch(`${apiBaseUrl()}/api/search?q=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json();
+}
+
+/** A club's players in a decade, by league code and decade start year (search results). */
+export async function fetchSquadByCode(league: League, decade: number, club: string): Promise<SquadResponse> {
+  const res = await fetch(`${apiBaseUrl()}/api/squad?league=${league}&decade=${decade}&club=${encodeURIComponent(club)}`);
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  return res.json();
+}

@@ -12,7 +12,7 @@ import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, Glow, SHADOW_SM } from '@/design/ui';
 import type { ResultReport } from '@/game/online';
-import { finishDailyAttempt } from '@/game/daily';
+import { dailyMatch, finishDailyAttempt, saveDailyMatch } from '@/game/daily';
 import { shareText } from '@/game/share';
 import { ensureUser } from '@/game/user';
 import type { DraftPlayer } from '@/mocks/players';
@@ -123,8 +123,13 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
           meta={`${legend.club} ${legend.season} · DAILY CHALLENGE`}
           metaPlayed={`${legend.club} ${legend.season}`}
           simulate={async (you) => {
+            // The day's match is decided at kick-off and kept: leaving mid-match shows the same one again.
+            const kept = practice ? null : dailyMatch(date);
+            if (kept) return kept;
             const opp = legendXI ?? (await fetchLegend(legend.id));
-            return playLocally(you, { name: legend.nickname, xi: opp.xi });
+            const played = playLocally(you, { name: legend.nickname, xi: opp.xi });
+            if (!practice) saveDailyMatch(date, played);
+            return played;
           }}
           onFinished={() => undefined}
           onNewGame={onHome}

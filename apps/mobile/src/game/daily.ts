@@ -1,13 +1,17 @@
-import { weekDates } from '@champion/shared';
+import { seededRandom, weekDates } from '@champion/shared';
 import { useSyncExternalStore } from 'react';
+
+import type { DraftPick } from '@/components/draft-spin';
+import type { Played } from '@/components/match-play';
 
 import { recordProgress } from './progress';
 import { claim } from './wallet';
 import { loadJSON, saveJSON } from './storage';
 
 /**
- * Daily challenge attempts on this device: one a day. The attempt starts with the draft (leaving
- * it still uses the day up); the result and the emoji share text are kept.
+ * Daily challenge attempts on this device: one a day. The attempt starts with the draft; leaving it
+ * (a call, another app) keeps the draft, which continues exactly where it was (see DailyDraft).
+ * The result and the emoji share text are kept.
  */
 
 export type DailyAttempt = { title: string; done: boolean; success: boolean; share: string };
@@ -39,6 +43,8 @@ export function startDailyAttempt(date: string, title: string) {
 export function finishDailyAttempt(date: string, success: boolean, share: string) {
   if (attempts[date]?.done) return;
   set({ ...attempts, [date]: { title: attempts[date]?.title ?? '', done: true, success, share } });
+  saveJSON(DRAFT_FILE, null);
+  saveJSON(MATCH_FILE, null);
   recordProgress({ kind: 'daily', won: success, streak: dailyStreak(date) });
   if (success) void claim('daily-challenge', date, 'Daily Challenge won');
 }
@@ -89,4 +95,63 @@ export function dailyStreakInfo(today: string, all: Attempts = attempts): Streak
 /** Days in a row you played the Daily (see dailyStreakInfo). */
 export function dailyStreak(today: string, all: Attempts = attempts): number {
   return dailyStreakInfo(today, all).days;
+}
+
+// ---- The Daily draft in progress, saved so leaving never costs the day's attempt.
+
+const DRAFT_FILE = 'daily-draft';
+const MATCH_FILE = 'daily-match';
+
+/**
+ * Saved between draws only (never mid-spin), with the number of seeded reel draws used so far:
+ * continuing rewinds the reels to exactly that point, so an interrupted draw replays identically –
+ * leaving can't be used as a free re-spin.
+ */
+export type DailyDraft = {
+  date: string;
+  challengeId: string;
+  formation: string;
+  lineup: (DraftPick | null)[];
+  pending: DraftPick | null;
+  captainId: string | null;
+  respinsUsed: number;
+  randomCalls: number;
+};
+
+export function saveDailyDraft(draft: DailyDraft) {
+  saveJSON(DRAFT_FILE, draft);
+}
+
+/** The saved draft of that day's challenge, if any (and the day isn't finished). */
+export function loadDailyDraft(date: string, challengeId: string): DailyDraft | null {
+  if (attempts[date]?.done) return null;
+  const d = loadJSON<DailyDraft>(DRAFT_FILE);
+  return d && d.date === date && d.challengeId === challengeId ? d : null;
+}
+
+/** The day's seeded reels, counting every draw (`calls`); `skip` draws are used up already. */
+export function dailyReels(seed: string, skip = 0): { random: () => number; calls: () => number } {
+  const next = seededRandom(seed);
+  let calls = 0;
+  for (; calls < skip; calls++) next();
+  return {
+    random: () => {
+      calls++;
+      return next();
+    },
+    calls: () => calls,
+  };
+}
+
+/**
+ * The legend match of the day, stored at kick-off: leaving during the match and coming back shows
+ * the same match again instead of a new one.
+ */
+export function dailyMatch(date: string): Played | null {
+  const m = loadJSON<{ date: string; played: Played }>(MATCH_FILE);
+  return m?.date === date ? m.played : null;
+}
+
+export function saveDailyMatch(date: string, played: Played) {
+  saveJSON(MATCH_FILE, { date, played });
 }

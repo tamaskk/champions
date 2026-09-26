@@ -24,10 +24,20 @@ export function DailyCard({
   onPractice?: (d: DailyResponse) => void;
 }) {
   const practiceLeft = useWallet().wallet?.consumables['daily-practice'] ?? 0;
-  const date = todayKey();
-  const [daily, setDaily] = useState<DailyResponse>(() => dailyForDate(date));
+  // Ticks once a second while today's Daily is done (the countdown), so the card rolls over at midnight.
+  const [now, setNow] = useState(() => Date.now());
+  const date = todayKey(new Date(now));
+  const [loaded, setDaily] = useState<DailyResponse>(() => dailyForDate(date));
+  // Right after midnight the new day's challenge may still be loading: never show yesterday's.
+  const daily = loaded.date === date ? loaded : dailyForDate(date);
   const attempts = useDailyAttempts();
   const attempt = attempts[date];
+  const waiting = !!attempt?.done;
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [waiting]);
   const streakInfo = dailyStreakInfo(date, attempts);
   const streak = streakInfo.days;
   useEffect(() => {
@@ -107,7 +117,7 @@ export function DailyCard({
                 color={attempt.success ? C.green : C.red}
               />
               <Txt v="bodySemi" color={attempt.success ? C.green : C.red}>
-                {attempt.success ? 'Completed!' : 'Failed'} · come back tomorrow
+                {attempt.success ? 'Completed!' : 'Failed'} · next in {untilMidnight(now)}
               </Txt>
             </View>
             <Pressable
@@ -119,12 +129,16 @@ export function DailyCard({
             </Pressable>
           </View>
         ) : attempt ? (
-          <View style={[styles.result, { backgroundColor: alpha(C.red, 0.12) }]}>
-            <Icon name="lock" size={15} color={C.red} />
-            <Txt v="bodySemi" color={C.red}>
-              Attempt used (the draft was left) · come back tomorrow
+          <Pressable
+            onPress={() => onPlay(daily)}
+            accessibilityRole="button"
+            accessibilityLabel="Continue today's daily challenge draft"
+            style={({ pressed }) => [styles.enter, pressed && { opacity: 0.85 }]}>
+            <Icon name="play_arrow" size={16} color={C.onGoldDark} />
+            <Txt v="bodySemi" color={C.onGoldDark} style={{ letterSpacing: 0.6 }}>
+              CONTINUE YOUR DRAFT · SAVED
             </Txt>
-          </View>
+          </Pressable>
         ) : (
           <Pressable
             onPress={() => onPlay(daily)}
@@ -153,6 +167,13 @@ export function DailyCard({
       </View>
     </View>
   );
+}
+
+/** Time left until the next Daily (00:00 UTC), as hh:mm:ss. */
+function untilMidnight(now: number) {
+  const left = Math.max(0, Math.ceil((86_400_000 - (now % 86_400_000)) / 1000));
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(Math.floor(left / 3600))}:${pad(Math.floor((left % 3600) / 60))}:${pad(left % 60)}`;
 }
 
 const styles = StyleSheet.create({

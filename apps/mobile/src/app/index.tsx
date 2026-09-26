@@ -10,7 +10,6 @@ import {
   swapSpots,
   formationRoles,
   positionFit,
-  seededRandom,
   squadSummary,
   type DailyResponse,
   type SquadDetail,
@@ -20,7 +19,7 @@ import {
   type TournamentMode,
   FREE_RESPINS_PER_DRAFT,
 } from '@champion/shared';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -49,7 +48,7 @@ import { Btn, Chip, SHADOW_SM, ScreenHeader } from '@/design/ui';
 import { autofillBench, autofillLineup } from '@/game/autofill';
 import { consumeItem, useWallet } from '@/game/wallet';
 import { usePendingChallenge } from '@/game/challenge';
-import { startDailyAttempt } from '@/game/daily';
+import { dailyReels, loadDailyDraft, saveDailyDraft, startDailyAttempt } from '@/game/daily';
 import { leagueSeasonTitle, useLeagueSeason } from '@/game/league-season';
 import { clearCurrentSquad, reportResult, setCurrentSquad } from '@/game/online';
 import { kitColor, recordProgress, useProgress } from '@/game/progress';
@@ -109,6 +108,8 @@ export default function HomeScreen() {
   // Daily challenge: its rules, the day's seeded reels and the re-spins used.
   const [daily, setDaily] = useState<DailyResponse | null>(null);
   const dailyRandom = useRef<(() => number) | null>(null);
+  // How many seeded reel draws the Daily has used (saved with the draft, to continue it exactly).
+  const dailyCalls = useRef<(() => number) | null>(null);
   const [respinsUsed, setRespinsUsed] = useState(0);
   // Casual draft: free re-spins used (then bought re-spins are spent).
   const [freeRespinsUsed, setFreeRespinsUsed] = useState(0);
@@ -212,9 +213,24 @@ export default function HomeScreen() {
     setSquadId(null);
     setDaily(d);
     setRespinsUsed(0);
-    // Everyone gets the same reels on the same day.
-    dailyRandom.current = d ? seededRandom(`${d.date}|${d.challenge.id}`) : null;
+    // Everyone gets the same reels on the same day. A Daily draft that was left continues where it
+    // was: same squad, same re-spins, the reels rewound to the same draw.
+    const saved = d && !practiceTry ? loadDailyDraft(d.date, d.challenge.id) : null;
+    const reels = d ? dailyReels(`${d.date}|${d.challenge.id}`, saved?.randomCalls ?? 0) : null;
+    dailyRandom.current = reels?.random ?? null;
+    dailyCalls.current = reels?.calls ?? null;
     if (d && !practiceTry) startDailyAttempt(d.date, d.challenge.title);
+    if (saved) {
+      setFormation(saved.formation as Formation);
+      setLineup(saved.lineup);
+      setPending(saved.pending);
+      setCaptainId(saved.captainId);
+      setRespinsUsed(saved.respinsUsed);
+      setBench(EMPTY_BENCH);
+      setCard(null);
+      setShowPitch(true);
+      return;
+    }
     const locked = d?.challenge.rules.formation ?? keepFormation;
     if (locked) requestAnimationFrame(() => handleResult(locked));
     else requestAnimationFrame(() => reel.current?.spin());
@@ -231,6 +247,22 @@ export default function HomeScreen() {
       if (id === gameId.current) setShowPitch(true);
     }, 800);
   };
+
+  // The Daily draft is saved after every step (never mid-spin), so leaving doesn't cost the attempt.
+  useEffect(() => {
+    const calls = dailyCalls.current;
+    if (!daily || practice || drawing || !formation || !calls) return;
+    saveDailyDraft({
+      date: daily.date,
+      challengeId: daily.challenge.id,
+      formation,
+      lineup,
+      pending,
+      captainId,
+      respinsUsed,
+      randomCalls: calls(),
+    });
+  }, [daily, practice, drawing, formation, lineup, pending, captainId, respinsUsed]);
 
   const closeGame = () => {
     gameId.current += 1;
@@ -250,6 +282,7 @@ export default function HomeScreen() {
     setFinished(false);
     setDaily(null);
     dailyRandom.current = null;
+    dailyCalls.current = null;
     setRespinsUsed(0);
     setBench(EMPTY_BENCH);
     setCaptainId(null);

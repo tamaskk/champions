@@ -8,7 +8,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn } from '@/design/ui';
-import { shareImage, shareText, squadShareText } from '@/game/share';
+import { RESULT_SQUARE, shareHeadline, shareImage, shareText, squadShareText } from '@/game/share';
 import { claim } from '@/game/wallet';
 import { useProgress } from '@/game/progress';
 
@@ -27,6 +27,8 @@ export type ShareData = {
   getLink?: () => Promise<string | null>;
 };
 
+const SQUARE_COLOR = { '🟩': C.green, '🟨': C.gold, '🟥': C.red } as const;
+
 const surname = (name: string) => name.split(' ').slice(-1)[0] ?? name;
 
 /** Share a squad: the card as an image, an emoji summary, or the link that opens the XI. */
@@ -40,6 +42,7 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
   // Share-card frame (store or earned cosmetic), e.g. 'frame-gold' → CARD_FRAMES.gold.
   const equippedFrame = useProgress().equipped.frame;
   const frame = equippedFrame ? CARD_FRAMES[equippedFrame.replace(/^frame-/, '')] : undefined;
+  const head = shareHeadline(data.results);
   const best = [...data.players].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).map((p) => surname(p.name));
 
   const run = async (what: 'image' | 'text' | 'link') => {
@@ -61,7 +64,7 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
       }
       const message =
         what === 'link'
-          ? `⚽ Can your XI beat mine? OVR ${Math.round(data.overall)} · CHEM ${data.chemistry}\n${link}`
+          ? `⚽ ${head ? `${head.big} · ${head.sub}. ${head.dare}` : 'Can your XI beat mine?'} OVR ${Math.round(data.overall)} · CHEM ${data.chemistry}\n${link}`
           : squadShareText({ ...data, names: best, link });
       const r = await shareText(message);
       setNote(r === 'copied' ? 'Copied to the clipboard.' : r === 'failed' ? 'Sharing failed.' : null);
@@ -120,6 +123,29 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
                 </Txt>
               </View>
             </View>
+            {/* The headline: the squad's best result, big */}
+            {head && (
+              <View style={[styles.headline, { borderColor: alpha(SQUARE_COLOR[RESULT_SQUARE[head.outcome]], 0.5) }]}>
+                <Txt
+                  v="h36"
+                  color={head.outcome === 'champion' ? C.gold : C.text}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={styles.center}>
+                  {head.big}
+                </Txt>
+                <Txt v="bodySemi" color={C.textMuted} numberOfLines={2} style={styles.center}>
+                  {head.sub}
+                </Txt>
+                {data.results.length > 1 && (
+                  <View style={styles.squares}>
+                    {data.results.map((r, k) => (
+                      <View key={k} style={[styles.square, { backgroundColor: SQUARE_COLOR[RESULT_SQUARE[r.outcome]] }]} />
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
             <View style={styles.stats}>
               <Stat label="RATING" value={data.rating.toFixed(1)} color={C.blueLight} />
               <Stat label="CHEM" value={String(data.chemistry)} color={C.green} />
@@ -134,7 +160,7 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
               </View>
             ))}
             <Txt v="tinyBold" color={C.green} style={styles.brand}>
-              CAN YOUR XI BEAT MINE? · CHAMPION
+              {(head?.dare ?? 'Can your XI beat mine?').toUpperCase()} · CHAMPION
             </Txt>
             <LegalNote compact />
           </View>
@@ -242,6 +268,17 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
 }
 
 const styles = StyleSheet.create({
+  headline: {
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: R.md,
+    borderWidth: 1,
+    backgroundColor: alpha(C.deep, 0.6),
+  },
+  squares: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  square: { width: 14, height: 14, borderRadius: 3 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(4,8,14,0.94)',

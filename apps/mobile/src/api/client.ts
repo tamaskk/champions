@@ -32,15 +32,23 @@ import Constants from 'expo-constants';
 
 import type { DraftPlayer } from '@/mocks/players';
 
+/** The live backend (Vercel). */
+const PRODUCTION_API_URL = 'https://champions-web-amber.vercel.app';
+
 /**
- * EXPO_PUBLIC_API_URL wins. Otherwise use the machine running the Expo dev server (so a phone on
- * the same wifi reaches the Mac's Next server) on EXPO_PUBLIC_API_PORT, default 3100 — the fixed
- * port of `pnpm dev:web`.
+ * Where the app finds the API:
+ *  - EXPO_PUBLIC_API_URL, if set (any server);
+ *  - EXPO_PUBLIC_API_LOCAL=1: the Mac running the Expo dev server, on EXPO_PUBLIC_API_PORT
+ *    (default 3100 = `pnpm dev:web`), so a phone on the same wifi reaches the local Next server;
+ *  - otherwise the live backend.
  */
 function apiBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, '');
-  const host = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
-  return `http://${host}:${process.env.EXPO_PUBLIC_API_PORT ?? '3100'}`;
+  if (process.env.EXPO_PUBLIC_API_LOCAL === '1') {
+    const host = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
+    return `http://${host}:${process.env.EXPO_PUBLIC_API_PORT ?? '3100'}`;
+  }
+  return PRODUCTION_API_URL;
 }
 
 const leagueFromLabel = (label: string) =>

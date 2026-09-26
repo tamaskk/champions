@@ -179,9 +179,10 @@ pnpm dev:web          # Next.js on http://localhost:3100 (admin at /admin, API a
 pnpm dev:mobile       # Expo dev server – scan the QR code with Expo Go
 ```
 
-The app finds the API on the machine running the Expo dev server (same Wi-Fi), port **3100**.
-Set `EXPO_PUBLIC_API_URL` (or `EXPO_PUBLIC_API_PORT`) in `apps/mobile/.env.local` to point it
-elsewhere.
+The app talks to the live backend (`https://champions-web-amber.vercel.app`) by default. To use
+your local web server instead, put `EXPO_PUBLIC_API_LOCAL=1` in `apps/mobile/.env.local` (the phone
+then calls the Mac running the Expo dev server on port 3100, same Wi-Fi), or set
+`EXPO_PUBLIC_API_URL` to any server. Restart Expo with `npx expo start -c` after changing it.
 
 ### Data
 
@@ -202,7 +203,7 @@ back to demo players, so the game is playable from the start.
 | `API_FOOTBALL_KEY` | web | Optional, for recent seasons |
 | `REVENUECAT_WEBHOOK_AUTH` | web | Secret the RevenueCat webhook must send |
 | `ADS_SIMULATED`, `PURCHASES_SIMULATED` | web | Staging only: simulated ads/purchases outside development |
-| `EXPO_PUBLIC_API_URL` / `EXPO_PUBLIC_API_PORT` | mobile | Where the app finds the API |
+| `EXPO_PUBLIC_API_URL`, `EXPO_PUBLIC_API_LOCAL`, `EXPO_PUBLIC_API_PORT` | mobile | Where the app finds the API (default: the live Vercel backend) |
 
 `.env` files are git-ignored; never commit real values.
 

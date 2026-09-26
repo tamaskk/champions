@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { FormationsSheet } from '@/components/formations-sheet';
 import { SearchSheet } from '@/components/search-sheet';
 import { useRecords } from '@/game/session';
 import { LegalNote } from '@/components/legal-note';
@@ -86,6 +87,7 @@ export default function ExploreScreen() {
   const records = useRecords();
   const [filter, setFilter] = useState<Filter>('All');
   const [searching, setSearching] = useState(false);
+  const [showFormations, setShowFormations] = useState(false);
   const show = (f: Filter) => filter === 'All' || filter === f;
 
   return (
@@ -341,9 +343,15 @@ export default function ExploreScreen() {
                 <Icon name="grid_view" size={17} color={C.green} />
                 <Txt v="h20">Tactical Formations (~{FORMATIONS.length})</Txt>
               </View>
-              <Txt v="bodyBold" color={C.green}>
-                See All
-              </Txt>
+              <Pressable
+                onPress={() => setShowFormations(true)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={`See all ${FORMATIONS.length} formations`}>
+                <Txt v="bodyBold" color={C.green}>
+                  See All
+                </Txt>
+              </Pressable>
             </View>
             <View style={styles.grid}>
               {FORMATION_CARDS.map((f) => (
@@ -379,6 +387,7 @@ export default function ExploreScreen() {
         <LegalNote />
       </ScrollView>
       {searching && <SearchSheet onClose={() => setSearching(false)} />}
+      {showFormations && <FormationsSheet onClose={() => setShowFormations(false)} />}
     </View>
   );
 }

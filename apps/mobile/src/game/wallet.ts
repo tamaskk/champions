@@ -12,7 +12,7 @@ import {
 } from '@/api/client';
 
 import { onRewards, pushToast } from './progress';
-import { ensureUser } from './user';
+import { ensureUser, refreshProfile } from './user';
 
 /**
  * The coin wallet as the device sees it. Coins live on the server (the device can't mint them):
@@ -150,6 +150,7 @@ export async function changeUsername(username: string): Promise<SpendResult> {
     const user = await ensureUser();
     const r = await renameUser(user.userId, username, requestId());
     await refreshWallet();
+    if (r.ok) await refreshProfile();
     return { ok: r.ok, reason: r.reason };
   } catch {
     return { ok: false, reason: 'Offline' };

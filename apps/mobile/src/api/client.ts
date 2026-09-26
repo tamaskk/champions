@@ -24,6 +24,9 @@ import {
   type ClaimSource,
   type SpendResponse,
   type WalletResponse,
+  type AuthProfile,
+  type LoginRequest,
+  type RegisterRequest,
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
@@ -208,3 +211,12 @@ export const renameUser = (userId: string, username: string, requestId: string) 
 /** Development only: the server credits the product as if the app store had confirmed it. */
 export const simulatePurchase = (userId: string, productId: string, requestId: string) =>
   postJSON<WalletResponse>('/api/wallet/simulate-purchase', { userId, productId, requestId });
+
+// ---- Accounts (email + password on top of the guest user)
+
+export const registerAccount = (body: RegisterRequest) =>
+  postJSON<AuthProfile | { errors: Record<string, string> } | { error: string }>('/api/auth/register', body);
+export const loginAccount = (body: LoginRequest) => postJSON<AuthProfile | { error: string }>('/api/auth/login', body);
+export const fetchProfile = (userId: string) => postJSON<AuthProfile>('/api/auth/me', { userId });
+export const changeAccountPassword = (userId: string, oldPassword: string, newPassword: string) =>
+  postJSON<{ ok: boolean; error?: string }>('/api/auth/password', { userId, oldPassword, newPassword });

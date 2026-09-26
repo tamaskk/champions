@@ -7,6 +7,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
 import { Btn, Chip, Glow, SHADOW_SM, ScreenHeader, SectionTitle } from '@/design/ui';
+import { AccountCard } from '@/components/account-card';
 import { Shop } from '@/components/shop';
 import { TeamCrest } from '@/components/team-crest';
 import { shareText } from '@/game/share';
@@ -146,6 +147,12 @@ export default function ProfileScreen() {
               </Txt>
             </>
           )}
+        </View>
+
+        {/* Account */}
+        <View style={styles.gap12}>
+          <SectionTitle icon="person" iconColor={C.green} title="Account" />
+          <AccountCard />
         </View>
 
         {/* Coins */}

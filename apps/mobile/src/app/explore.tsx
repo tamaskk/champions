@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FormationsSheet } from '@/components/formations-sheet';
+import { FormationsSheet, MiniPitch, formationInfo } from '@/components/formations-sheet';
 import { SearchSheet } from '@/components/search-sheet';
 import { useRecords } from '@/game/session';
 import { LegalNote } from '@/components/legal-note';
@@ -47,47 +47,21 @@ const LEADERS = [
   { user: '@CruyffVision', squad: "Ajax '95 + High Press Arsenal '04", pts: 112, run: '37-1-0', ovr: 93 },
 ];
 
+// Four well-known shapes from the real formation list (details come from the formation itself).
 const FORMATION_CARDS = [
-  {
-    tag: 'POPULAR',
-    tagColor: C.greenStrong,
-    name: '4-3-3 Attack',
-    text: 'Wing overload with CAM link',
-    chem: '5★ Chem',
-    diff: 'Easy',
-  },
-  {
-    tag: 'CONTROL',
-    tagColor: C.surface4,
-    name: '3-5-2 Diamond',
-    text: 'Dense midfield mesh & twin ST',
-    chem: '5★ Chem',
-    diff: 'Pro',
-  },
-  {
-    tag: 'MODERN',
-    tagColor: C.surface4,
-    name: '4-2-3-1 Pivot',
-    text: 'Dual defensive shield & flanks',
-    chem: '4★ Chem',
-    diff: 'Med',
-  },
-  {
-    tag: 'RETRO',
-    tagColor: C.surface4,
-    name: '4-4-2 Flat',
-    text: 'Classic British high-tempo cross',
-    chem: '3★ Chem',
-    diff: 'Easy',
-  },
-];
+  { id: '4-3-3', tag: 'CLASSIC' },
+  { id: '4-4-2 diamond', tag: 'DIAMOND' },
+  { id: '4-2-3-1', tag: 'MODERN' },
+  { id: '3-5-2', tag: 'BACK THREE' },
+] as const;
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const records = useRecords();
   const [filter, setFilter] = useState<Filter>('All');
   const [searching, setSearching] = useState(false);
-  const [showFormations, setShowFormations] = useState(false);
+  // true = the full list; a formation id = the list opened on that formation.
+  const [showFormations, setShowFormations] = useState<boolean | string>(false);
   const show = (f: Filter) => filter === 'All' || filter === f;
 
   return (
@@ -354,40 +328,53 @@ export default function ExploreScreen() {
               </Pressable>
             </View>
             <View style={styles.grid}>
-              {FORMATION_CARDS.map((f) => (
-                <View key={f.name} style={styles.formation}>
-                  <View style={styles.between}>
-                    <Chip
-                      label={f.tag}
-                      color={f.tagColor === C.greenStrong ? C.onGreenStrong : C.text}
-                      bg={f.tagColor}
-                      type="capUpper"
-                    />
-                    <Txt v="cap" color={C.gold}>
-                      {f.chem}
-                    </Txt>
-                  </View>
-                  <Txt v="h20" style={{ marginTop: 8 }}>
-                    {f.name}
-                  </Txt>
-                  <Txt v="body" color={C.textMuted}>
-                    {f.text}
-                  </Txt>
-                  <View style={[styles.between, { marginTop: 10 }]}>
-                    <Txt v="capBody" color={C.textMuted}>
-                      Diff: {f.diff}
-                    </Txt>
-                    <Icon name="chevron_right" size={16} color={C.textMuted} />
-                  </View>
-                </View>
-              ))}
+              {FORMATION_CARDS.map((card) => {
+                const f = formationInfo(card.id);
+                return (
+                  <Pressable
+                    key={card.id}
+                    onPress={() => setShowFormations(card.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${card.id}: ${f.counts.DF} defenders, ${f.counts.MF} midfielders, ${f.counts.FW} forwards – open`}
+                    style={({ pressed }) => [styles.formation, pressed && { opacity: 0.8 }]}>
+                    <View style={styles.between}>
+                      <Chip
+                        label={card.tag}
+                        color={card.tag === 'CLASSIC' ? C.onGreenStrong : C.text}
+                        bg={card.tag === 'CLASSIC' ? C.greenStrong : C.surface4}
+                        type="capUpper"
+                      />
+                    </View>
+                    <View style={[styles.between, { marginTop: 8, alignItems: 'flex-start' }]}>
+                      <View style={{ flex: 1 }}>
+                        <Txt v="h20">{f.shape}</Txt>
+                        <Txt v="body" color={f.variant ? C.gold : C.textMuted}>
+                          {f.variant || 'flat lines'}
+                        </Txt>
+                      </View>
+                      <MiniPitch formation={card.id} width={46} height={58} />
+                    </View>
+                    <View style={[styles.between, { marginTop: 10 }]}>
+                      <Txt v="capBody" color={C.textMuted}>
+                        {f.counts.DF} DF · {f.counts.MF} MF · {f.counts.FW} FW
+                      </Txt>
+                      <Icon name="chevron_right" size={16} color={C.textMuted} />
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         )}
         <LegalNote />
       </ScrollView>
       {searching && <SearchSheet onClose={() => setSearching(false)} />}
-      {showFormations && <FormationsSheet onClose={() => setShowFormations(false)} />}
+      {showFormations !== false && (
+        <FormationsSheet
+          initial={typeof showFormations === 'string' ? showFormations : undefined}
+          onClose={() => setShowFormations(false)}
+        />
+      )}
     </View>
   );
 }

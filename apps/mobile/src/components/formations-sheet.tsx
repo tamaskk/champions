@@ -10,11 +10,11 @@ import { C, R, alpha } from '@/design/tokens';
 const ROLE_COLOR: Record<PlayerRole, string> = { GK: C.gold, DF: C.blueLight, MF: C.green, FW: '#ff8a80' };
 const PITCH_W = 150;
 const PITCH_H = 190;
-const DOT = 14;
 
-type Info = { id: string; shape: string; variant: string; back: number; counts: Record<PlayerRole, number> };
 
-function infoOf(id: string): Info {
+export type FormationInfo = { id: string; shape: string; variant: string; back: number; counts: Record<PlayerRole, number> };
+
+export function formationInfo(id: string): FormationInfo {
   const [shape, ...rest] = id.split(' ');
   const roles = formationRoles(id);
   const counts = { GK: 0, DF: 0, MF: 0, FW: 0 } as Record<PlayerRole, number>;
@@ -23,20 +23,24 @@ function infoOf(id: string): Info {
 }
 
 /** Small pitch drawing: one dot per spot, coloured by line (attack at the top). */
-function MiniPitch({ formation }: { formation: string }) {
+export function MiniPitch({ formation, width = PITCH_W, height = PITCH_H }: { formation: string; width?: number; height?: number }) {
   const spots = formationLayout(formation);
   const roles = formationRoles(formation);
+  const dot = Math.max(8, Math.round(width / 11));
   return (
-    <View style={styles.pitch} accessibilityLabel={`${formation} on a pitch`}>
-      <View style={styles.halfway} />
+    <View style={[styles.pitch, { width, height }]} accessibilityLabel={`${formation} on a pitch`}>
+      <View style={[styles.halfway, { top: height / 2 }]} />
       {spots.map((s, i) => (
         <View
           key={i}
           style={[
             styles.dot,
             {
-              left: s.x * PITCH_W - DOT / 2,
-              top: (1 - s.y) * PITCH_H - DOT / 2,
+              width: dot,
+              height: dot,
+              borderRadius: dot / 2,
+              left: s.x * width - dot / 2,
+              top: (1 - s.y) * height - dot / 2,
               backgroundColor: ROLE_COLOR[roles[i]!],
             },
           ]}
@@ -47,12 +51,13 @@ function MiniPitch({ formation }: { formation: string }) {
 }
 
 /** All formations the reel can land on, filterable by the number at the back. */
-export function FormationsSheet({ onClose }: { onClose: () => void }) {
+export function FormationsSheet({ onClose, initial }: { onClose: () => void; /** Opened on this formation. */ initial?: string }) {
   const insets = useSafeAreaInsets();
-  const all = useMemo(() => FORMATIONS.map(infoOf), []);
+  const all = useMemo(() => FORMATIONS.map(formationInfo), []);
   const backs = useMemo(() => [...new Set(all.map((f) => f.back))].sort((a, b) => a - b), [all]);
-  const [back, setBack] = useState<number | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  // Opened from a formation card: filter to its back line (so it's near the top) and expand it.
+  const [back, setBack] = useState<number | null>(initial ? formationInfo(initial).back : null);
+  const [open, setOpen] = useState<string | null>(initial ?? null);
   const shown = back === null ? all : all.filter((f) => f.back === back);
 
   return (
@@ -159,15 +164,13 @@ const styles = StyleSheet.create({
   count: { paddingHorizontal: 6, paddingVertical: 3, borderRadius: R.xs },
   detail: { flexDirection: 'row', gap: 14, paddingHorizontal: 12, paddingBottom: 12 },
   pitch: {
-    width: PITCH_W,
-    height: PITCH_H,
     borderRadius: R.md,
     backgroundColor: C.pitchDark,
     borderWidth: 1,
     borderColor: alpha('#ffffff', 0.25),
   },
-  halfway: { position: 'absolute', left: 0, right: 0, top: PITCH_H / 2, height: 1, backgroundColor: alpha('#ffffff', 0.25) },
-  dot: { position: 'absolute', width: DOT, height: DOT, borderRadius: DOT / 2, borderWidth: 1.5, borderColor: C.deep },
+  halfway: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: alpha('#ffffff', 0.25) },
+  dot: { position: 'absolute', borderWidth: 1.5, borderColor: C.deep },
   codes: { gap: 8, justifyContent: 'center' },
   codeLine: { gap: 2 },
 });

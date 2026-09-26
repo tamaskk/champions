@@ -13,7 +13,7 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 | # | Hol | Elem | Mit várna a felhasználó | Mi történik | Javaslat |
 |---|---|---|---|---|---|
 | 1 ✅ | `design/ui.tsx` (`Avatar`), minden fejlécben | Zöld kör jobb fent | Profil / fiók megnyitása | **Kész:** a felhasználónév monogramja, koppintásra a Profil fül. A Profil oldalon kiemelt (aktuális oldal). Teljes képernyős folyamatokban (draft, összesítő, torna) nem jelenik meg, mert onnan nincs visszaút a fülsorra. | – |
-| 2 🔴 | `design/ui.tsx:91` (`ScreenHeader`), minden fejléc vissza-gomb nélkül | Csengő („notifications”) | Értesítések | Semmi – nincs értesítés funkció sehol | Kivenni, vagy értesítés-lista (pl. napi kihívás, H2H eredmény, új szint) |
+| 2 ✅ | `components/notification-bell.tsx`, minden fejléc vissza-gomb nélkül | Csengő | Értesítések | **Kész:** piros számláló az olvasatlanokkal; koppintásra lista: achievementek, szintlépések, coinok (a telefonon mentve, max. 50), és kitűzve a még le nem játszott mai Daily Challenge (koppintásra Home). Megnyitáskor olvasottá válnak, „Clear all” törli. | – |
 | 3 🔴 | `app/index.tsx:497`, draft képernyő jobb felső sarka | „tune” kerek gomb, 0.6 átlátszósággal | Beállítások / taktika | Semmi – `View`, tartósan „letiltottnak” látszik | Kivenni, vagy draft-beállítások (pl. hang, gyorsaság, re-spin info) |
 | 4 🔴 | `app/index.tsx:489-494` | Formáció neve + „expand_more” nyíl az „ACTIVE TACTIC” alatt | Formáció-választó / részletek | Semmi – a formáció a pörgetés után nem változtatható | Kivenni a nyilat, vagy formáció-infó lap |
 | 5 🔴 | `app/explore.tsx:112-114` | Kereső ikon (kerek gomb) | Játékos / klub / csapat keresése | Semmi – nincs keresés | Keresés a `/api/player` + klublista alapján, vagy kivenni |

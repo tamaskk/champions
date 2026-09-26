@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { NotificationBell } from '@/components/notification-bell';
 import { useTabBarHidden } from '@/components/pill-tabs';
 import { useUser } from '@/game/user';
 
@@ -130,11 +131,7 @@ export function ScreenHeader({
         </View>
       </View>
       <View style={styles.headerRight}>
-        {showBell && !onBack && (
-          <View style={styles.bell}>
-            <Icon name="notifications" size={20} color={C.text} />
-          </View>
-        )}
+        {showBell && !onBack && <NotificationBell />}
         <Avatar />
       </View>
     </View>
@@ -342,12 +339,6 @@ export const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 7,
-  },
-  bell: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   btn: {
     flexDirection: 'row',

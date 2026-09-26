@@ -11,6 +11,7 @@ import {
 
 import type { IconName } from '@/design/icon';
 
+import { addNotice } from './notifications';
 import { loadJSON, saveJSON } from './storage';
 
 /**
@@ -456,6 +457,7 @@ export function recordProgress(e: ProgressEvent) {
   }
   toasts = [...toasts, ...notices];
   emit();
+  for (const n of notices) keepInInbox(n);
 
   const levels = Array.from({ length: Math.max(0, after - before) }, (_, i) => before + 1 + i);
   if (levels.length || unlocked.length) {
@@ -475,6 +477,14 @@ export function onRewards(listener: (e: RewardEvent) => void) {
 export function pushToast(t: Omit<Toast, 'id'>) {
   toasts = [...toasts, { ...t, id: toastId++ }];
   emit();
+  keepInInbox(t);
+}
+
+/** Achievements, level-ups and coins also go to the bell's inbox (XP-only notices don't). */
+function keepInInbox(t: Omit<Toast, 'id'>) {
+  // XP ticks would bury the rest; 'info' notices are momentary feedback (e.g. "Not enough coins").
+  if (t.tone === 'xp' || t.icon === 'info') return;
+  addNotice({ icon: t.icon, title: t.title, detail: t.detail, tone: t.tone });
 }
 
 /** Prestige: from MAX_LEVEL back to level 1; the count (and the prestige frame) stay forever. */

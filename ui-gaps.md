@@ -20,7 +20,7 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 | 6 ✅ | `components/formations-sheet.tsx` | „See All” a formációknál | Összes formáció listája | **Kész:** mind a 92 formáció, szűrés hátvédszám szerint (1–6), soronként változat és DF/MF/FW darabszám; koppintásra kis pályarajz a helyekkel és a posztkódok soronként. | – |
 | 7 ✅ | `app/explore.tsx` | 4 formációkártya jobbra mutató nyíllal | Formáció részletei | **Kész:** koppintásra a formáció-lista nyílik az adott formáción (kinyitva, pályarajz + posztkódok). | – |
 | 8 ✅ | `components/squad-summary.tsx` | Trófea ikon a jobb felső sarokban | Trófea / verseny | **Kész:** ugyanazt csinálja, mint a lap alján lévő fő gomb – tornaválasztó („Start tournament”), napi kihívásnál „Check challenge”. | – |
-| 9 🟡 | `app/explore.tsx:246-282` | Hall of Fame kártyák | A mentett csapat XI-ének megnyitása | Semmi (nem is annyira gombnak látszik) | Koppintásra csapat-részletek, mint a Ranks-on |
+| 9 ✅ | `components/hall-of-fame-detail.tsx` | Hall of Fame kártyák | A mentett csapat megnyitása | **Kész:** koppintásra részletező lap – overall, kémia, pontok, pályarajz a kezdőcsapattal, legjobb szezon és a teljes XI (poszt, név, klub, évtized, liga, rating). A teljes XI mostantól minden draft végén mentődik; a korábbi mentéseknél csak a nevek vannak meg, ezt a lap jelzi. | – |
 
 ## 2. Kamu vagy beégetett adat, ami valódinak látszik
 

@@ -1,3 +1,4 @@
+import type { SavedPlayer } from '@champion/shared';
 import { useSyncExternalStore } from 'react';
 
 import { recordProgress } from './progress';
@@ -25,6 +26,10 @@ export type SavedSquad = {
   };
   /** A few names, for the card subtitle. */
   names: string[];
+  /** The whole XI in formation spot order (saved since the Hall of Fame detail view). */
+  players?: SavedPlayer[];
+  /** ISO date of the draft. */
+  createdAt?: string;
 };
 
 export type Records = {

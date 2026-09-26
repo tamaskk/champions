@@ -277,7 +277,32 @@ export default function HomeScreen() {
         .slice()
         .sort((a, b) => (b.player.rating ?? 0) - (a.player.rating ?? 0))
         .map((p) => p.player.name.split(' ').slice(-1)[0]!);
-      setSquadId(recordDraft({ formation, overall: s.overall, chemistry: s.chemistry.team, names }));
+      // Players in spot order: kept in the Hall of Fame and ready for the leaderboard.
+      const players = lineup.flatMap((p, i): SavedPlayer[] =>
+        p
+          ? [
+              {
+                spot: spots[i]!.code,
+                role: roles[i]!,
+                name: p.player.name,
+                rating: p.player.rating ?? null,
+                club: p.club,
+                decade: p.decade,
+                league: p.league,
+              },
+            ]
+          : [],
+      );
+      setSquadId(
+        recordDraft({
+          formation,
+          overall: s.overall,
+          chemistry: s.chemistry.team,
+          names,
+          players,
+          createdAt: new Date().toISOString(),
+        }),
+      );
       recordProgress({
         kind: 'draft',
         draft: {
@@ -288,27 +313,13 @@ export default function HomeScreen() {
           players: placed.map((p) => ({ name: p.player.name, league: p.league, club: p.club, decade: p.decade })),
         },
       });
-      // Ready to be saved on the leaderboard (players in spot order).
+      // Ready to be saved on the leaderboard.
       setCurrentSquad({
         formation,
         overall: s.overall,
         rating: s.rating,
         chemistry: s.chemistry.team,
-        players: lineup.flatMap((p, i): SavedPlayer[] =>
-          p
-            ? [
-                {
-                  spot: spots[i]!.code,
-                  role: roles[i]!,
-                  name: p.player.name,
-                  rating: p.player.rating ?? null,
-                  club: p.club,
-                  decade: p.decade,
-                  league: p.league,
-                },
-              ]
-            : [],
-        ),
+        players,
       });
     }
     setShowSummary(true);

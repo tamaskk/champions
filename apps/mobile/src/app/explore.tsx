@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FormationsSheet, MiniPitch, formationInfo } from '@/components/formations-sheet';
 import { SearchSheet } from '@/components/search-sheet';
-import { useRecords } from '@/game/session';
+import { HallOfFameDetail } from '@/components/hall-of-fame-detail';
+import { useRecords, type SavedSquad } from '@/game/session';
 import { LegalNote } from '@/components/legal-note';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
@@ -60,6 +61,7 @@ export default function ExploreScreen() {
   const records = useRecords();
   const [filter, setFilter] = useState<Filter>('All');
   const [searching, setSearching] = useState(false);
+  const [hallSquad, setHallSquad] = useState<SavedSquad | null>(null);
   // true = the full list; a formation id = the list opened on that formation.
   const [showFormations, setShowFormations] = useState<boolean | string>(false);
   const show = (f: Filter) => filter === 'All' || filter === f;
@@ -229,7 +231,12 @@ export default function ExploreScreen() {
             {records.squads.map((s) => {
               const invincible = s.season && s.season.lost === 0;
               return (
-                <View key={s.id} style={styles.squadCard}>
+                <Pressable
+                  key={s.id}
+                  onPress={() => setHallSquad(s)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${s.formation} squad, overall ${Math.round(s.overall)} – open`}
+                  style={({ pressed }) => [styles.squadCard, pressed && { opacity: 0.8 }]}>
                   <View style={styles.between}>
                     <View style={styles.flexShrink}>
                       <Txt v="h20" numberOfLines={1}>
@@ -260,7 +267,7 @@ export default function ExploreScreen() {
                     />
                     <Stat label="RECORD" value={s.season ? String(s.season.points) : '–'} unit="PTS" color={C.text} />
                   </View>
-                </View>
+                </Pressable>
               );
             })}
           </View>
@@ -369,6 +376,7 @@ export default function ExploreScreen() {
         <LegalNote />
       </ScrollView>
       {searching && <SearchSheet onClose={() => setSearching(false)} />}
+      {hallSquad && <HallOfFameDetail squad={hallSquad} onClose={() => setHallSquad(null)} />}
       {showFormations !== false && (
         <FormationsSheet
           initial={typeof showFormations === 'string' ? showFormations : undefined}

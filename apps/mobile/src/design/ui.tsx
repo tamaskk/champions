@@ -1,7 +1,11 @@
 import { Image } from 'expo-image';
+import { router, usePathname } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useTabBarHidden } from '@/components/pill-tabs';
+import { useUser } from '@/game/user';
 
 import { Icon, type IconName } from './icon';
 import { Txt, type TypeName } from './text';
@@ -39,12 +43,50 @@ export function Glow({
   );
 }
 
-/** The green profile bubble on the right of every header. */
+/** Username initials: "RoyalCaptain86" → "RC", "zizou_master" → "ZM", "Pele" → "PE". */
+const initialsOf = (username: string) => {
+  const parts = username.replace(/[0-9_]+/g, ' ').match(/[A-Z][a-z]*|[a-z]+/g) ?? [];
+  const letters = parts.length >= 2 ? parts[0]![0]! + parts[1]![0]! : username.slice(0, 2);
+  return letters.toUpperCase();
+};
+
+/**
+ * The profile bubble on the right of every header: your initials, opens the Profile tab. On the
+ * Profile tab it is the highlighted current page. Hidden in full-screen flows (draft, summary,
+ * tournaments), where the tab bar is hidden too and leaving would strand the flow.
+ */
 export function Avatar() {
+  const user = useUser();
+  const pathname = usePathname();
+  const tabBarHidden = useTabBarHidden();
+  if (tabBarHidden) return null;
+
+  const here = pathname === '/profile';
+  const label = user?.username ? `Profile of @${user.username}` : 'Profile';
+  const content = user?.username ? (
+    <Txt v="tinyBold" color={C.onGreen} style={styles.avatarText}>
+      {initialsOf(user.username)}
+    </Txt>
+  ) : (
+    <Icon name="person" size={16} color={C.onGreen} />
+  );
+
+  if (here) {
+    return (
+      <View style={[styles.avatar, styles.avatarHere]} accessibilityLabel={label} accessibilityState={{ selected: true }}>
+        {content}
+      </View>
+    );
+  }
   return (
-    <View style={styles.avatar}>
-      <Icon name="person" size={16} color={C.onGreen} />
-    </View>
+    <Pressable
+      onPress={() => router.navigate('/profile')}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={`${label} – open`}
+      style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}>
+      {content}
+    </Pressable>
   );
 }
 
@@ -239,6 +281,15 @@ export function ratingTint(rating: number): string {
 }
 
 export const styles = StyleSheet.create({
+  avatarText: {
+    fontSize: 11,
+    lineHeight: 13,
+    letterSpacing: 0.3,
+  },
+  avatarHere: {
+    borderWidth: 2,
+    borderColor: C.greenLight,
+  },
   avatar: {
     width: 32,
     height: 32,

@@ -14,7 +14,8 @@ import { C, R, alpha } from '@/design/tokens';
 const requests = new Set<object>();
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
-function useTabBarHidden() {
+/** True while a full-screen flow (draft, summary, tournaments) hides the tab bar. */
+export function useTabBarHidden() {
   return useSyncExternalStore(
     (l) => {
       listeners.add(l);

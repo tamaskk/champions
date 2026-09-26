@@ -148,19 +148,21 @@ export default function ExploreScreen() {
             <View style={styles.topology}>
               <View style={styles.between}>
                 <Txt v="cap" color={C.textMuted}>
-                  LINK TOPOLOGY
+                  HOW LINKS WORK
                 </Txt>
-                <Txt v="cap" color={C.green}>
-                  ACTIVE PITCH HARMONY
-                </Txt>
+                <Chip label="EXAMPLE" color={C.textMuted} bg={C.surface3} type="capUpper" radius={R.pill} />
               </View>
+              {/* A worked example with real careers, scored by the rules in @champion/shared chemistry.ts. */}
               <View style={styles.nodes}>
-                <Node rating="94" color={C.gold} pos="ST" name="Ronaldo" />
-                <Connector color={C.gold} label={'+4 PERFECT\nDUO'} />
-                <Node rating="93" color={C.green} pos="CAM" name="Zidane" />
-                <Connector color={C.green} label={'+3 ERA\nCOHORTS'} />
-                <Node rating="91" color={C.blueLight} pos="CM" name="Pirlo" />
+                <Node color={C.gold} pos="LB" name="Maldini" note="Milan" />
+                <Connector color={C.gold} label={'+4 LEGENDS\nMILAN 1985–97'} />
+                <Node color={C.gold} pos="CB" name="Baresi" note="Milan" />
+                <Connector color={C.blueLight} label={'+2 NATION\n& ERA'} />
+                <Node color={C.blueLight} pos="GK" name="Buffon" note="Parma" />
               </View>
+              <Txt v="capBody" color={C.textMuted}>
+                Your own links show on the pitch while you draft – tap Chemistry lines in the draft settings.
+              </Txt>
             </View>
 
             <View style={styles.tiers}>
@@ -426,15 +428,15 @@ export default function ExploreScreen() {
 const ordinalPlace = (n: number) =>
   `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : (({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th')}`;
 
-function Node({ rating, color, pos, name }: { rating: string; color: string; pos: string; name: string }) {
+function Node({ color, pos, name, note }: { color: string; pos: string; name: string; note: string }) {
   return (
     <View style={styles.node}>
       <View style={styles.nodeBox}>
         <Txt v="h20" color={color} style={{ lineHeight: 20 }}>
-          {rating}
+          {pos}
         </Txt>
         <Txt v="tiny" color={C.textMuted}>
-          {pos}
+          {note}
         </Txt>
       </View>
       <Txt v="capBody" style={{ fontFamily: 'Inter_600SemiBold', marginTop: 4 }}>

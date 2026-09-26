@@ -27,7 +27,7 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 | # | Hol | Elem | Probléma | Javaslat |
 |---|---|---|---|---|
 | 10 ✅ | `app/explore.tsx:41-46`, `:286-327` | „Global 38-0 Vault” ranglista: `@ZizouMaster`, `@SanSiroKing`, `@CruyffVision` | Kitalált játékosok, „ONLINE SOON” jelzéssel – közben a **Ranks fülön már van valódi online ranglista**, így ez elavult és ellentmond neki | Lecserélni a valódi top csapatokra (`/api/squads`) vagy „Open Ranks” linkre |
-| 11 🟠 | `app/explore.tsx:155-171` | „LINK TOPOLOGY / ACTIVE PITCH HARMONY”: Ronaldo 94 ST, Zidane 93 CAM, Pirlo 91 CM, „+4 PERFECT DUO” | Beégetett demó; az „ACTIVE” szó azt sugallja, hogy a saját pályád | „Example” feliratot kapjon, vagy a legutóbbi saját csapatból számolja |
+| 11 ✅ | `app/explore.tsx:155-171` | „LINK TOPOLOGY / ACTIVE PITCH HARMONY”: Ronaldo 94 ST, Zidane 93 CAM, Pirlo 91 CM, „+4 PERFECT DUO” | Beégetett demó; az „ACTIVE” szó azt sugallja, hogy a saját pályád | „Example” feliratot kapjon, vagy a legutóbbi saját csapatból számolja |
 | 12 ✅ | `app/explore.tsx` | Formációkártyák | **Kész:** a kitalált „4-3-3 Attack”, „5★ Chem”, „Diff” helyett valódi formációk (4-3-3, 4-4-2 diamond, 4-2-3-1, 3-5-2) valódi DF/MF/FW számmal, változattal és kis pályarajzzal. | – |
 | 13 🟠 | `app/explore.tsx:103-110` | „V1.4 DATABASE” chip | Nincs mögötte verziózás | Kivenni, vagy a valódi adatbázis-méret (pl. „184k player seasons”) |
 | 14 🟠 | `components/home-landing.tsx:73-78` | „SEASON 04 ACTIVE” zöld „élő” ponttal | Nincs szezon-rendszer mögötte (a Season Pass hónapja más) | A valódi Season Pass hónapra kötni (pl. „SEASON 2026-09”) vagy kivenni |

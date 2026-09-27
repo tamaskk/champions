@@ -48,11 +48,12 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'free', label: 'Free', icon: 'card_giftcard' },
 ];
 
-// Real payments need RevenueCat and a store build; until then only development builds can test
-// the flow (the server credits simulated purchases in development only).
-const PURCHASES_SIMULATED = __DEV__;
-// Rewarded ads need an ad network (server-side verification); simulated in development.
-const ADS_SIMULATED = __DEV__;
+// Test mode: until real payments (RevenueCat, store build) and an ad network are connected, every
+// build offers simulated purchases and rewarded ads – nothing is charged. The server credits them
+// in development, or in production only with PURCHASES_SIMULATED=1 / ADS_SIMULATED=1 set there.
+// Set EXPO_PUBLIC_PURCHASES_LIVE=1 / EXPO_PUBLIC_ADS_LIVE=1 once the real ones are connected.
+const PURCHASES_SIMULATED = process.env.EXPO_PUBLIC_PURCHASES_LIVE !== '1';
+const ADS_SIMULATED = process.env.EXPO_PUBLIC_ADS_LIVE !== '1';
 
 const AD_SECONDS = 5;
 
@@ -313,7 +314,7 @@ function CoinsTab({ busy, run }: TabProps) {
       )}
       {PURCHASES_SIMULATED && (
         <Txt v="cap" color={C.textDim}>
-          Development build: purchases are simulated, no money is charged.
+          Test mode: purchases are simulated – no money is charged.
         </Txt>
       )}
 
@@ -516,7 +517,7 @@ function FreeTab({ busy, run }: TabProps) {
               {AD_COINS} coins per video · {wallet.adsToday}/{ADS_PER_DAY} today
             </Txt>
             <Txt v="cap" color={C.textMuted}>
-              {ADS_SIMULATED ? 'Development: a simulated 5-second ad' : 'Coming soon'}
+              {ADS_SIMULATED ? 'Test mode: a simulated 5-second ad' : 'Coming soon'}
             </Txt>
           </View>
           <Btn

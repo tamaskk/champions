@@ -21,6 +21,7 @@ import { LOCAL_CLAUDE_ENABLED, askClaude } from "@/server/claude-cli";
 import { deleteClubSeason, saveClubSeasons } from "@/server/club-data";
 import { deleteDaily, saveDailies } from "@/server/daily-data";
 import { deleteSquadPlayer, getClubSeason, saveSquad } from "@/server/squad-data";
+import { adminGrantCoins } from "@/server/wallet-data";
 
 async function assertAdmin() {
   if (!(await verifyAdminSession((await cookies()).get(ADMIN_COOKIE)?.value))) {
@@ -178,4 +179,27 @@ export async function askClaudeForDailiesAction(count: number, startDate: string
     DAILY_IMPORT_SCHEMA,
   );
   return result.ok ? { ok: true, json: JSON.stringify(result.data, null, 2) } : result;
+}
+
+export type GrantState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "done"; amount: number; balance: number };
+
+/** Credits (or, negative, corrects) a player's coins; recorded in the ledger as "admin". */
+export async function grantCoinsAction(_prev: GrantState, formData: FormData): Promise<GrantState> {
+  await assertAdmin();
+  const userId = formData.get("userId");
+  const requestId = formData.get("requestId");
+  const amount = Number(formData.get("amount"));
+  const note = formData.get("note");
+  if (typeof userId !== "string" || typeof requestId !== "string") return { status: "error", message: "Missing player." };
+  try {
+    const r = await adminGrantCoins(userId, amount, typeof note === "string" ? note : "", requestId);
+    if (!r.ok) return { status: "error", message: r.reason ?? "Not done." };
+    revalidatePath("/admin/coins");
+    return { status: "done", amount, balance: r.balance };
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Database unavailable." };
+  }
 }

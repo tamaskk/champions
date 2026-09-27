@@ -455,3 +455,80 @@ export async function applyPurchase(userId: string, eventId: string, p: Purchase
 }
 
 export const purchasesSimulated = () => process.env.NODE_ENV !== "production" || process.env.PURCHASES_SIMULATED === "1";
+
+// ---------------------------------------------------------------------------------------------
+// Admin: look up players and credit (or correct) coins. Callers must check the admin session.
+
+export type AdminPlayerRow = {
+  userId: string;
+  username: string;
+  email: string | null;
+  registered: boolean;
+  balance: number;
+  createdAt: Date;
+};
+
+const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Players whose username or email contains `q` (newest first), with their coin balance. */
+export async function adminFindPlayers(q: string, limit = 25): Promise<AdminPlayerRow[]> {
+  const text = q.trim().slice(0, 60);
+  const filter = text
+    ? { $or: [{ username: { $regex: escapeRegex(text), $options: "i" } }, { email: { $regex: escapeRegex(text), $options: "i" } }] }
+    : {};
+  const found = await (await users()).find(filter).sort({ createdAt: -1 }).limit(limit).toArray();
+  const balances = new Map(
+    (await (await wallets()).find({ userId: { $in: found.map((u) => u.userId) } }, { projection: { userId: 1, balance: 1 } }).toArray()).map(
+      (w) => [w.userId, w.balance],
+    ),
+  );
+  return found.map((u) => ({
+    userId: u.userId,
+    username: u.username,
+    email: u.email ?? null,
+    registered: !!u.passwordHash,
+    balance: balances.get(u.userId) ?? 0,
+    createdAt: u.createdAt,
+  }));
+}
+
+export const ADMIN_GRANT_LIMIT = 100_000;
+
+/**
+ * Credits `amount` coins to a player (negative = a correction; never below 0), recorded in the
+ * ledger as source "admin" with the note. `requestId` makes a double submit count once.
+ */
+export async function adminGrantCoins(
+  userId: string,
+  amount: number,
+  note: string,
+  requestId: string,
+): Promise<{ ok: boolean; balance: number; reason?: string }> {
+  if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > ADMIN_GRANT_LIMIT) {
+    return { ok: false, balance: 0, reason: `Amount: a whole number between −${ADMIN_GRANT_LIMIT} and ${ADMIN_GRANT_LIMIT}, not 0` };
+  }
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(requestId)) throw new BadRequest("requestId");
+  const user = await userOf(userId);
+  const r = await move(user.userId, `admin:${requestId}`, "admin", amount, {}, { note: note.trim().slice(0, 200) || null });
+  if (r.ok) return r;
+  return { ok: false, balance: r.balance, reason: r.duplicate ? "Already done" : "Not enough coins for that correction" };
+}
+
+export type AdminGrantRow = { username: string; amount: number; balanceAfter: number; note: string | null; createdAt: Date };
+
+/** The latest admin coin changes. */
+export async function adminRecentGrants(limit = 20): Promise<AdminGrantRow[]> {
+  const rows = await (await coinLedger()).find({ source: "admin" }).sort({ createdAt: -1 }).limit(limit).toArray();
+  const names = new Map(
+    (await (await users()).find({ userId: { $in: rows.map((r) => r.userId) } }, { projection: { userId: 1, username: 1 } }).toArray()).map(
+      (u) => [u.userId, u.username],
+    ),
+  );
+  return rows.map((r) => ({
+    username: names.get(r.userId) ?? "?",
+    amount: r.amount,
+    balanceAfter: r.balanceAfter,
+    note: typeof r.meta?.note === "string" ? r.meta.note : null,
+    createdAt: r.createdAt,
+  }));
+}

@@ -123,7 +123,7 @@ the rest of your squad.
 │   │       └── design/         # design tokens, type scale, icons, UI primitives
 │   └── web/                    # Next.js: admin panel + public game API
 │       └── src/
-│           ├── app/admin/      # admin (dashboard, clubs, players, import, daily challenges)
+│           ├── app/admin/      # admin (dashboard, clubs, players, import, daily challenges, coins)
 │           ├── app/api/        # public JSON API used by the app
 │           ├── app/s/[id]/     # public squad page (share links)
 │           └── server/         # server-only data access (Mongo), wallet, auth
@@ -242,7 +242,8 @@ The draft and every tournament are full-screen flows started from Home
 **Admin** (`/admin`, login at `/admin-login` with the credentials from `.env`; 12-hour session): dashboard with coverage per league and decade, clubs (sortable,
 paginated, squad size per club season), players (filter by league, decade, position, nationality;
 sorted by rating), club and squad import (JSON, AI prompt, or the local Claude CLI), daily
-challenge scheduling.
+challenge scheduling, and **Coins**: find a player by username or email and credit (or correct) coins – every
+change goes into the coin ledger as "admin" with a note.
 
 **Public API** (`/api`, JSON, CORS open):
 

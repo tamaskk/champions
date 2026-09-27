@@ -11,11 +11,15 @@ type Props = {
   min: number;
   /** A drafted player is waiting: empty slots take him. */
   placing: boolean;
+  /** Substitute picked up to come on (tap a starter to swap). */
+  selected?: number | null;
+  /** A starter is picked up: the substitutes he can swap with. */
+  swapTargets?: boolean[];
   onPress: (index: number) => void;
 };
 
 /** The substitutes' bench under the pitch: filled slots open the player card, empty ones take the waiting pick. */
-export function BenchRow({ bench, min, placing, onPress }: Props) {
+export function BenchRow({ bench, min, placing, selected = null, swapTargets, onPress }: Props) {
   const filled = bench.filter(Boolean).length;
   return (
     <View style={styles.wrap}>
@@ -30,14 +34,30 @@ export function BenchRow({ bench, min, placing, onPress }: Props) {
       <View style={styles.row}>
         {bench.map((p, i) => {
           const target = placing && !p;
+          const swap = !!swapTargets?.[i];
           return (
             <Pressable
               key={i}
               onPress={() => onPress(i)}
-              disabled={placing ? !!p : !p}
+              disabled={placing ? !!p : swapTargets ? !swap : !p}
               accessibilityRole="button"
-              accessibilityLabel={p ? `Substitute ${p.player.name}` : target ? 'Put him on the bench' : 'Empty bench slot'}
-              style={[styles.slot, p ? styles.filled : styles.empty, target && styles.target]}>
+              accessibilityState={{ selected: selected === i }}
+              accessibilityLabel={
+                p
+                  ? swap
+                    ? `Swap with substitute ${p.player.name}`
+                    : `Substitute ${p.player.name}: bring him on`
+                  : target
+                    ? 'Put him on the bench'
+                    : 'Empty bench slot'
+              }
+              style={[
+                styles.slot,
+                p ? styles.filled : styles.empty,
+                (target || swap) && styles.target,
+                selected === i && styles.picked,
+                swapTargets && !swap && !!p && styles.dimmed,
+              ]}>
               {p ? (
                 <>
                   <Txt v="tinyBold" color={C.textMuted}>
@@ -66,6 +86,8 @@ export function BenchRow({ bench, min, placing, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
+  picked: { borderWidth: 2, borderColor: C.gold, backgroundColor: alpha(C.gold, 0.15) },
+  dimmed: { opacity: 0.4 },
   wrap: { gap: 6 },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   row: { flexDirection: 'row', gap: 6 },

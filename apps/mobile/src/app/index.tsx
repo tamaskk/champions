@@ -172,6 +172,22 @@ export default function HomeScreen() {
     [formation, lineupPlayers],
   );
   const moving = selected !== null && formation ? lineup[selected] : null;
+  // Substitute picked up from the bench: tap a starter to swap them (goalkeepers only for goalkeepers).
+  const [subbing, setSubbing] = useState<number | null>(null);
+  const sub = subbing !== null ? bench[subbing] : null;
+  const canSwapWithBench = (spot: number, pick: DraftPick | null | undefined) =>
+    !!formation && !!pick && !!lineup[spot] && isLockedSpot(formation, spot) === (pick.player.position === 'GK');
+  const subFits: (PositionFit | 'out')[] = spots.map((spot, i) =>
+    sub && canSwapWithBench(i, sub) ? (positionFit(sub.player, spot) ?? 'out') : null,
+  );
+  const subGains = useMemo(() => {
+    if (!sub || !formation || !chemistry) return undefined;
+    return lineupPlayers.map((p, i) => {
+      if (!p || isLockedSpot(formation, i) !== (sub.player.position === 'GK')) return null;
+      const next = lineupPlayers.map((q, k) => (k === i ? sub.player : q));
+      return computeChemistry(formation, next).team - chemistry.team;
+    });
+  }, [sub, formation, lineupPlayers, chemistry]);
   const moveFits: (PositionFit | 'out')[] = spots.map((spot, i) =>
     moving && formation && i !== selected && lineup[i] && !isLockedSpot(formation, i)
       ? (positionFit(moving.player, spot) ?? 'out')
@@ -274,6 +290,7 @@ export default function HomeScreen() {
     setDrawing(false);
     setPending(null);
     setSelected(null);
+    setSubbing(null);
     setShowSummary(false);
     setShowTournaments(false);
     setTournament(null);
@@ -306,6 +323,7 @@ export default function HomeScreen() {
 
   const spin = () => {
     setSelected(null);
+    setSubbing(null);
     setDrawId((id) => id + 1);
     setDrawing(true);
   };
@@ -445,12 +463,26 @@ export default function HomeScreen() {
     setPending(null);
   };
 
+  // A starter and a substitute change places (the armband stays on the pitch: it is dropped if the
+  // captain goes to the bench).
+  const swapWithBench = (spot: number, slot: number) => {
+    const starter = lineup[spot];
+    const substitute = bench[slot];
+    if (!starter || !canSwapWithBench(spot, substitute)) return;
+    setLineup((prev) => prev.map((p, i) => (i === spot ? substitute : p)));
+    setBench((prev) => prev.map((p, i) => (i === slot ? starter : p)));
+    if (starter.player.id === captainId) setCaptainId(null);
+    setSelected(null);
+    setSubbing(null);
+  };
+
+  // Tap a substitute to pick him up (again to put him down); with a starter picked up, tapping a
+  // substitute swaps them.
   const pressBench = (index: number) => {
     if (pending) return placeOnBench(index);
-    if (bench[index]) {
-      setSelected(null);
-      setCard({ kind: 'bench', index });
-    }
+    if (!bench[index]) return;
+    if (selected !== null) return swapWithBench(selected, index);
+    setSubbing((s) => (s === index ? null : index));
   };
 
   const toggleCaptain = () => {
@@ -471,6 +503,7 @@ export default function HomeScreen() {
   const pressSpot = (index: number) => {
     if (pending) return placeOnSpot(index);
     if (!formation) return;
+    if (subbing !== null) return swapWithBench(index, subbing);
     if (selected === null) {
       // Any placed player (the goalkeeper too) can be picked up for his card or the armband.
       if (lineup[index]) setSelected(index);
@@ -487,6 +520,7 @@ export default function HomeScreen() {
   // swap targets and himself (to cancel). The goalkeeper never swaps.
   const pitchPressable = spots.map((_, i) => {
     if (pending) return !!fits[i];
+    if (sub) return canSwapWithBench(i, sub);
     if (!formation || !lineup[i]) return false;
     if (selected === null || i === selected) return true;
     return !isLockedSpot(formation, i) && !isLockedSpot(formation, selected);
@@ -673,7 +707,7 @@ export default function HomeScreen() {
               kitColor={kit}
               formation={formation}
               width={pitchWidth}
-              highlighted={pending ? fits : moving ? moveFits : undefined}
+              highlighted={pending ? fits : sub ? subFits : moving ? moveFits : undefined}
               pressable={pitchPressable}
               selected={selected}
               captain={captainSpot >= 0 ? captainSpot : undefined}
@@ -686,7 +720,9 @@ export default function HomeScreen() {
               gains={
                 pendingPreview
                   ? pendingPreview.bySpot.map((team) => (team === null ? null : team - pendingPreview.current))
-                  : moveGains
+                  : sub
+                    ? subGains
+                    : moveGains
               }
               tag={daily ? 'DAILY CHALLENGE' : placed[0] ? `ARCADE ${placed[0].decade}S` : 'ARCADE MODE'}
             />
@@ -696,7 +732,17 @@ export default function HomeScreen() {
             <View style={styles.callout}>
               <Icon name="info" size={15} color={C.textMuted} />
               <Txt v="body" color={C.textMuted} style={styles.flex}>
-                {moving ? (
+                {sub ? (
+                  <>
+                    Bring on{' '}
+                    <Txt v="bodyBold" color={C.gold}>
+                      {sub.player.name}
+                    </Txt>
+                    {sub.player.position === 'GK'
+                      ? ': tap your goalkeeper to swap them. Tap the substitute again to cancel.'
+                      : ': tap a starter to swap them – blue = main position, gold = other, red = out of position. Tap the substitute again to cancel.'}
+                  </>
+                ) : moving ? (
                   <>
                     Swap{' '}
                     <Txt v="bodyBold" color={C.gold}>
@@ -704,7 +750,7 @@ export default function HomeScreen() {
                     </Txt>
                     {isLockedSpot(formation, selected!)
                       ? ': the goalkeeper stays in goal. Open his card or give him the armband; tap him again to cancel.'
-                      : ': tap another player to swap. Red = out of position (−1 chemistry). Tap him again to cancel.'}
+                      : ': tap another player (or a substitute) to swap. Red = out of position (−1 chemistry). Tap him again to cancel.'}
                   </>
                 ) : pending ? (
                   <>
@@ -759,7 +805,34 @@ export default function HomeScreen() {
               </Txt>
             </View>
 
-            {useBench && <BenchRow bench={bench} min={BENCH_MIN} placing={!!pending} onPress={pressBench} />}
+            {useBench && (
+              <BenchRow
+                bench={bench}
+                min={BENCH_MIN}
+                placing={!!pending}
+                selected={subbing}
+                swapTargets={
+                  selected !== null ? bench.map((b) => canSwapWithBench(selected, b)) : undefined
+                }
+                onPress={pressBench}
+              />
+            )}
+
+            {sub && subbing !== null && (
+              <Animated.View entering={FadeIn.duration(200)} style={styles.actions}>
+                <Btn
+                  kind="dark"
+                  icon="person"
+                  label="PLAYER CARD"
+                  onPress={() => {
+                    setCard({ kind: 'bench', index: subbing });
+                    setSubbing(null);
+                  }}
+                  style={styles.flex}
+                />
+                <Btn kind="mid" icon="close" label="CANCEL" onPress={() => setSubbing(null)} style={styles.flex} />
+              </Animated.View>
+            )}
 
             {moving && selected !== null && (
               <Animated.View entering={FadeIn.duration(200)} style={styles.actions}>
@@ -784,7 +857,7 @@ export default function HomeScreen() {
               </Animated.View>
             )}
 
-            {!pending && !moving && (
+            {!pending && !moving && !sub && (
               <Animated.View entering={FadeIn.duration(200)} style={squadReady && benchOpen ? styles.actionsColumn : styles.actions}>
                 {squadReady ? (
                   <>

@@ -4,9 +4,11 @@ import {
   LEAGUE_NAMES,
   LEAGUES,
   PLAYER_ROLES,
+  boostWeight,
   decadeLabel,
   positionFit,
   slugify,
+  type DraftBoostId,
   type League,
   type PlayerRole,
   type PositionCode,
@@ -84,6 +86,8 @@ export type DraftRules = {
   /** Re-spins left (null = unlimited). */
   respinsLeft?: number | null;
   onRespin?: () => void;
+  /** Draft boost of this draft: the club reel lands more often on clubs with top-rated players. */
+  boost?: DraftBoostId | null;
 };
 
 /** "Live Draft Session": three reels (decade, league, club), then that club's squad to draft from. */
@@ -117,6 +121,7 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
   const playerRequest = useRef(0);
   const queue = useRef<number[]>([1, CLUB_SLOT]);
   const [clubItems, setClubItems] = useState<string[]>(CLUB_PLACEHOLDER);
+  const [clubWeights, setClubWeights] = useState<number[] | undefined>(undefined);
   const [clubStatus, setClubStatus] = useState<ClubStatus>('idle');
   const [clubSpin, setClubSpin] = useState(0);
   const clubRequest = useRef(0);
@@ -148,6 +153,7 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
         if (id !== clubRequest.current) return;
         if (clubs.length === 0) return setClubStatus('empty');
         setClubItems(clubs.map((c) => c.club));
+        setClubWeights(rules?.boost ? clubs.map((c) => boostWeight(rules.boost, c.top)) : undefined);
         setClubStatus('ready');
         setRevealed((prev) => prev.map((r, i) => r || i === CLUB_SLOT));
         setClubSpin((n) => n + 1);
@@ -355,6 +361,7 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
                         fontSize={i === CLUB_SLOT ? 16 : 20}
                         lines={i === CLUB_SLOT ? 2 : 1}
                         random={rules?.random}
+                        weights={i === CLUB_SLOT ? clubWeights : undefined}
                         onResult={setResult(i)}
                       />
                       {!revealed[i] && (

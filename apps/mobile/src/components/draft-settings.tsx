@@ -1,3 +1,4 @@
+import { DRAFT_BOOSTS, STORE_ITEMS, type DraftBoostId } from '@champion/shared';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, View } from 'react-native';
 
@@ -11,13 +12,17 @@ type Props = {
   /** null in the Daily Challenge (its own re-spin rules; no restart). */
   respins: { freeLeft: number; bought: number } | null;
   onRestart?: () => void;
+  /** Draft boosts (casual drafts only): the active one, how many you own, and activation. */
+  boosts?: { active: DraftBoostId | null; owned: Record<DraftBoostId, number>; onActivate: (b: DraftBoostId) => Promise<boolean> };
   onClose: () => void;
 };
 
 /** Draft settings behind the tune button: spin speed, chemistry lines, re-spins, restart. */
-export function DraftSettings({ respins, onRestart, onClose }: Props) {
+export function DraftSettings({ respins, onRestart, boosts, onClose }: Props) {
   const { settings } = useProgress();
   const [confirmRestart, setConfirmRestart] = useState(false);
+  const [activating, setActivating] = useState<DraftBoostId | null>(null);
+  const [boostNote, setBoostNote] = useState<string | null>(null);
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
@@ -83,6 +88,58 @@ export function DraftSettings({ respins, onRestart, onClose }: Props) {
               Daily Challenge: its own re-spin rules, one attempt – no restart.
             </Txt>
           </View>
+        )}
+
+        {boosts &&
+          (boosts.active ? (
+            <View style={[styles.item, { backgroundColor: alpha(C.gold, 0.12) }]}>
+              <Icon name="bolt" size={20} color={C.gold} />
+              <View style={styles.flex}>
+                <Txt v="bodyBold" color={C.gold}>
+                  {DRAFT_BOOSTS[boosts.active].name} active
+                </Txt>
+                <Txt v="cap" color={C.textMuted}>
+                  For the rest of this draft the club reel lands more often on clubs with{' '}
+                  {DRAFT_BOOSTS[boosts.active].minRating}+ rated players.
+                </Txt>
+              </View>
+            </View>
+          ) : (
+            (['star', 'legend'] as const).map((b) => {
+              const cfg = DRAFT_BOOSTS[b];
+              const price = STORE_ITEMS.find((i) => i.id === cfg.itemId)?.price ?? 0;
+              const owned = boosts.owned[b];
+              return (
+                <View key={b} style={styles.item}>
+                  <Icon name="bolt" size={20} color={b === 'legend' ? C.gold : C.blueLight} />
+                  <View style={styles.flex}>
+                    <Txt v="bodyBold">
+                      {cfg.name} · {cfg.minRating}+
+                    </Txt>
+                    <Txt v="cap" color={C.textMuted}>
+                      {owned > 0 ? `You have ${owned} · for this draft` : `${price} coins in Profile → Shop`}
+                    </Txt>
+                  </View>
+                  <Btn
+                    kind={owned > 0 ? 'gold' : 'dark'}
+                    label={activating === b ? '…' : 'USE'}
+                    height={36}
+                    disabled={owned < 1 || activating !== null}
+                    onPress={async () => {
+                      setActivating(b);
+                      const ok = await boosts.onActivate(b);
+                      setActivating(null);
+                      setBoostNote(ok ? null : 'Couldn’t use the boost – check your connection.');
+                    }}
+                  />
+                </View>
+              );
+            })
+          ))}
+        {boostNote && (
+          <Txt v="capBody" color={C.red}>
+            {boostNote}
+          </Txt>
         )}
 
         {onRestart && (

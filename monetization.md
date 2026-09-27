@@ -10,17 +10,25 @@ jogi szöveg – `packages/shared/src/store.ts`.
 
 1. **Két pénznem.** Az **XP** csak játékból jön és nem vehető meg. A **coin** játékból is jön, és
    pénzért is vehető.
-2. **Pénzért nincs jobb csapat.** Coinért soha nem vehető játékos, játékoskártya, rating,
-   chemistry vagy meccsbeli előny. Valódi ember vagy klub soha nem lehet a termék.
-   - Típus szinten kizárva: a `StoreEffect` csak kozmetikai (`CosmeticEffect`) és kényelmi
-     (`ConvenienceEffect`) hatás lehet.
+2. **Pénzért nincs közvetlenül jobb csapat.** Coinért soha nem vehető játékos, játékoskártya,
+   rating vagy chemistry. Valódi ember vagy klub soha nem lehet a termék.
+   - **Kivétel (tulajdonosi döntés, 2026-09-27): draft boostok.** A Star boost (400 coin) és a
+     Legend boost (1200 coin) egy draftra a klub-tárcsát gyakrabban viszi olyan klubra, ahol a
+     kipörgetett évtizedben 80+ / 90+ ratingű játékos van (`DRAFT_BOOSTS` súlyai: kb. 2–4×
+     gyakrabban, valós adaton pl. Serie A 90-es évek 90+ klub 14% → 51%). Játékos nem garantált,
+     a valódi keretből kell választani, az esélyek a boltban látszanak. Daily-ben nem használható.
+     **Jogi kockázat:** fizetős esélymódosítás véletlen húzásra = loot box-jellegű mechanika
+     (Belgium tiltja, Hollandia korlátozza, PEGI „véletlen elemek” jelölés, magasabb korhatár) –
+     bolti kiadás előtt ellenőrizni.
+   - Típus szinten: a `StoreEffect` kozmetikai (`CosmeticEffect`), kényelmi
+     (`ConvenienceEffect`) vagy draft boost (`DraftBoostEffect`) hatás lehet.
    - `validateStoreItem()` elutasít minden mást, és azt is, ha a név/id játékosra, ratingre vagy
      eredményre utal.
    - `CLAUDE.md` szabály, hogy később se kerüljön be.
-3. **A versenymódok tiszták.** Daily Challenge, Head-to-head és ranglista: boost itt nem
-   használható (`BOOSTS_ALLOWED`). Így az eredmények összehasonlíthatók maradnak – az egész játék
-   ettől működik („ugyanazt kaptuk, én jobban draftoltam”).
-4. **Nincs loot box és nincs coinos fogadás.** Minden megvásárolható dolog előre látható. Coint
+3. **A Daily tiszta.** A Daily Challenge-ben boost nem használható (`BOOSTS_ALLOWED`): mindenki
+   ugyanazokat a tárcsákat kapja. Boostolt casual csapat mehet Head-to-headbe és a ranglistára
+   (tulajdonosi döntés, 2026-09-27).
+4. **Nincs coinos fogadás.** A draft boostokon kívül minden megvásárolható dolog előre látható. Coint
    feltenni meccsre és nyerni rajta nem lehet.
 5. **Nem hivatalos fan game.** A `DISCLAIMER` / `DISCLAIMER_SHORT` szöveg látszik a Home, Explore,
    Ranks oldalak alján, a megosztó kártyán, a nyilvános csapatoldalon (`/s/:id`) és a bolti

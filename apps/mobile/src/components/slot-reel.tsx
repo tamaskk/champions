@@ -29,6 +29,8 @@ type Props<T extends string> = {
   visibleRows?: number;
   /** Random source of the spin (seeded for the daily challenge). */
   random?: () => number;
+  /** Relative chance of each item (draft boosts); uniform without. */
+  weights?: readonly number[];
   ref?: Ref<SlotReelHandle>;
 };
 
@@ -49,6 +51,7 @@ export function SlotReel<T extends string>({
   rowHeight = DEFAULT_ROW_HEIGHT,
   visibleRows = DEFAULT_VISIBLE_ROWS,
   random = Math.random,
+  weights,
   ref,
 }: Props<T>) {
   const progress = useProgress();
@@ -107,7 +110,7 @@ export function SlotReel<T extends string>({
       if (spinning.current) return;
       spinning.current = true;
       const spinId = ++spinCount.current;
-      const index = Math.floor(random() * n);
+      const index = weights && weights.length === n ? weightedIndex(weights, random()) : Math.floor(random() * n);
       const endTop = index + n - center;
       const drift = (((topRow.current - endTop) % n) + n) % n;
       const startTop = endTop + loops * n + drift;
@@ -159,6 +162,17 @@ export function SlotReel<T extends string>({
       <View pointerEvents="none" style={[styles.fade, styles.fadeBottom, { height: rowHeight * 0.9 }]} />
     </Pressable>
   );
+}
+
+/** The item a uniform draw `u` (0–1) lands on when each item has its own weight. */
+function weightedIndex(weights: readonly number[], u: number): number {
+  const total = weights.reduce((a, w) => a + Math.max(0, w), 0);
+  let x = u * total;
+  for (let i = 0; i < weights.length; i++) {
+    x -= Math.max(0, weights[i]!);
+    if (x < 0) return i;
+  }
+  return weights.length - 1;
 }
 
 const styles = StyleSheet.create({

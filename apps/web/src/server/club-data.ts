@@ -3,7 +3,7 @@ import "server-only";
 import { DECADES, LEAGUES, type ClubSeason, type League } from "@champion/shared";
 import { ObjectId, type Filter } from "mongodb";
 
-import { clubSeasons, importLogs, type ClubSeasonDoc } from "./db";
+import { clubSeasons, importLogs, squadPlayers, type ClubSeasonDoc } from "./db";
 
 export type CoverageCell = { league: League; decade: number; clubs: number; seasons: number };
 
@@ -192,8 +192,26 @@ export function parseClubFilters(params: Record<string, string | string[] | unde
   };
 }
 
-/** Distinct clubs of a league in a decade, most seasons first. */
+/**
+ * Distinct clubs of a league in a decade, most seasons first, with each club's best player rating
+ * in the decade (`top`, used by the draft boosts).
+ */
 export async function clubsInDecade(league: League, decade: number) {
+  const [clubs, tops] = await Promise.all([clubList(league, decade), bestRatings(league, decade)]);
+  return clubs.map((c) => ({ ...c, top: tops.get(c.clubSlug) ?? null }));
+}
+
+async function bestRatings(league: League, decade: number): Promise<Map<string, number>> {
+  const rows = await (await squadPlayers())
+    .aggregate<{ _id: string; top: number | null }>([
+      { $match: { league, season: { $gte: decade, $lte: decade + 9 }, rating: { $type: "number" } } },
+      { $group: { _id: "$clubSlug", top: { $max: "$rating" } } },
+    ])
+    .toArray();
+  return new Map(rows.flatMap((r) => (r.top === null ? [] : [[r._id, Math.round(r.top * 10) / 10] as const])));
+}
+
+async function clubList(league: League, decade: number) {
   const col = await clubSeasons();
   return col
     .aggregate<{ club: string; clubSlug: string; seasons: number }>([

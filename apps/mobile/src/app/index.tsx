@@ -17,6 +17,8 @@ import {
   type SavedPlayer,
   type PositionFit,
   type TournamentMode,
+  type DraftBoostId,
+  DRAFT_BOOSTS,
   FREE_RESPINS_PER_DRAFT,
 } from '@champion/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -111,6 +113,8 @@ export default function HomeScreen() {
   // How many seeded reel draws the Daily has used (saved with the draft, to continue it exactly).
   const dailyCalls = useRef<(() => number) | null>(null);
   const [respinsUsed, setRespinsUsed] = useState(0);
+  // Draft boost used in this draft (casual only): the club reel favours clubs with top-rated players.
+  const [boost, setBoost] = useState<DraftBoostId | null>(null);
   // Casual draft: free re-spins used (then bought re-spins are spent).
   const [freeRespinsUsed, setFreeRespinsUsed] = useState(0);
   // Daily practice try (store item): not recorded, not ranked.
@@ -223,6 +227,7 @@ export default function HomeScreen() {
     gameId.current += 1;
     setPractice(practiceTry);
     setFreeRespinsUsed(0);
+    setBoost(null);
     setStarted(true);
     setFormation(null);
     setShowPitch(false);
@@ -306,6 +311,7 @@ export default function HomeScreen() {
     setCard(null);
     setPractice(false);
     setFreeRespinsUsed(0);
+    setBoost(null);
     setOfferSecondChance(false);
     clearCurrentSquad();
   };
@@ -416,6 +422,7 @@ export default function HomeScreen() {
 
   // Casual draft: FREE_RESPINS_PER_DRAFT free re-spins per squad, then bought ones (store).
   const casualRules: DraftRules = {
+    boost,
     respinsLeft: Math.max(0, FREE_RESPINS_PER_DRAFT - freeRespinsUsed) + respinTokens,
     onRespin: () => {
       if (freeRespinsUsed < FREE_RESPINS_PER_DRAFT) setFreeRespinsUsed((n) => n + 1);
@@ -724,7 +731,11 @@ export default function HomeScreen() {
                     ? subGains
                     : moveGains
               }
-              tag={daily ? 'DAILY CHALLENGE' : placed[0] ? `ARCADE ${placed[0].decade}S` : 'ARCADE MODE'}
+              tag={
+                daily
+                  ? 'DAILY CHALLENGE'
+                  : `${placed[0] ? `ARCADE ${placed[0].decade}S` : 'ARCADE MODE'}${boost ? ` · ⚡ ${DRAFT_BOOSTS[boost].name.toUpperCase()}` : ''}`
+              }
             />
           </View>
 
@@ -989,6 +1000,22 @@ export default function HomeScreen() {
 
       {showSettings && (
         <DraftSettings
+          boosts={
+            daily
+              ? undefined
+              : {
+                  active: boost,
+                  owned: {
+                    star: wallet?.consumables[DRAFT_BOOSTS.star.itemId] ?? 0,
+                    legend: wallet?.consumables[DRAFT_BOOSTS.legend.itemId] ?? 0,
+                  },
+                  onActivate: async (b) => {
+                    const ok = await consumeItem(DRAFT_BOOSTS[b].itemId);
+                    if (ok) setBoost(b);
+                    return ok;
+                  },
+                }
+          }
           respins={
             daily
               ? null

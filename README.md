@@ -308,10 +308,12 @@ development database only; a commercial release needs licensed or own data.
 
 - **XP** comes only from playing. **Coins** come from playing (daily login, daily challenge,
   legends, head-to-head wins, level-ups, achievements, invites) and later from purchases.
-- **Coins never buy players, ratings, chemistry or any match advantage** – only cosmetics (card
-  frames, kits, crests, pitch and reel skins, goal celebrations) and convenience in casual games
-  (extra re-spins, Scout, Second chance, Daily practice). Competitive modes (Daily, Head-to-head,
-  leaderboard) stay equal for everyone. `validateStoreItem` enforces this.
+- **Coins never buy a player, a rating or chemistry directly.** They buy cosmetics (card frames,
+  kits, crests, pitch and reel skins, goal celebrations), convenience in casual games (extra
+  re-spins, Scout, Second chance, Daily practice) and **draft boosts**: for one draft the club reel
+  lands more often on clubs with 80+ (Star boost, 400 coins) or 90+ (Legend boost, 1200 coins)
+  rated players – about 2–4× as often, never guaranteed; odds shown in the shop. No boosts in the
+  Daily (same reels for everyone). `validateStoreItem` enforces the catalog rules.
 - The **wallet lives on the server** (`wallets` + `coinLedger`, one transaction per movement, an
   idempotency key per claim). The app never sends an amount.
 - **Accounts**: everyone starts as a guest; registering (name, username, email, password) keeps the

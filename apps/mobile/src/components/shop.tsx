@@ -124,8 +124,8 @@ export function Shop({ onClose, initialTab = 'store' }: { onClose: () => void; i
             {tab === 'pass' && <PassTab busy={busy} run={run} />}
             {tab === 'free' && <FreeTab busy={busy} run={run} />}
             <Txt v="capBody" color={C.textDim}>
-              Coins only buy looks and convenience – never players, ratings or a stronger squad. Daily Challenge,
-              Head-to-head and the leaderboard stay equal for everyone.
+              Coins never buy a player or a rating. Draft boosts only make the club reel land more often on clubs
+              with top-rated players; the Daily Challenge stays the same for everyone.
             </Txt>
           </ScrollView>
         )}
@@ -179,7 +179,10 @@ function StoreTab({ busy, run }: TabProps) {
     ...(progress.prestige > 0 ? ['frame-prestige'] : []),
   ];
   const cosmetics = STORE_ITEMS.filter((i) => !isConsumable(i) && i.effect.kind !== 'unlock-legend-tier');
-  const convenience = STORE_ITEMS.filter((i) => isConsumable(i) || i.effect.kind === 'unlock-legend-tier');
+  const convenience = STORE_ITEMS.filter(
+    (i) => (isConsumable(i) || i.effect.kind === 'unlock-legend-tier') && i.effect.kind !== 'draft-boost',
+  );
+  const boosts = STORE_ITEMS.filter((i) => i.effect.kind === 'draft-boost');
 
   const equipped = (item: StoreItem) => {
     const slot = slotOf(item);
@@ -293,6 +296,14 @@ function StoreTab({ busy, run }: TabProps) {
         </Section>
       )}
       <Section title="Convenience · casual games only">{convenience.map(row)}</Section>
+      <Section title="Draft boosts · one draft each">
+        {boosts.map(row)}
+        <Txt v="cap" color={C.textDim}>
+          Use one from the draft settings (tune button). The club reel then lands more often on clubs with 80+ (Star)
+          or 90+ (Legend) rated players in the spun decade – about 2–4× as often, never guaranteed. You still pick
+          from the club&apos;s real squad. Not in the Daily Challenge.
+        </Txt>
+      </Section>
     </>
   );
 }

@@ -1,13 +1,16 @@
 /**
- * Coin store: what coins can buy. HARD RULE (see monetization.md): coins never buy players,
- * ratings, chemistry or anything that makes a squad stronger – only cosmetics and convenience.
- * Real people are never a product: no item may name, contain or unlock a real player or club.
+ * Coin store: what coins can buy – cosmetics, convenience, and draft boosts. Coins never buy a
+ * player, a player card, a rating or chemistry directly, and real people are never a product: no
+ * item may name, contain or unlock a real player or club.
  *
- * The rule is enforced three ways:
+ * Exception decided by the owner (2026-09-27): draft boosts (`DraftBoostEffect`) make the club reel
+ * land more often on clubs that have 80+ / 90+ rated players in the spun decade. The draw stays
+ * random and the player still picks from the real squad; the odds are published (DRAFT_BOOSTS).
+ *
+ * Enforced by:
  *  1. Types: `StoreEffect` has no variant that grants a player, a rating or a match advantage.
- *  2. `validateStoreItem` rejects items that would (used by the catalog test and the admin/server).
- *  3. Competitive modes (Daily Challenge, Head-to-head, leaderboard) ignore convenience boosts:
- *     `BOOSTS_ALLOWED` says where a boost may be used at all.
+ *  2. `validateStoreItem` rejects anything else (used by the catalog test and the admin/server).
+ *  3. `BOOSTS_ALLOWED` says where a boost may be used (not in the Daily: everyone gets the same reels).
  */
 
 /** Cosmetic: changes how things look, never how they play. */
@@ -33,7 +36,37 @@ export type ConvenienceEffect =
   | { kind: 'daily-practice' }
   | { kind: 'unlock-legend-tier'; tier: 1 | 2 | 3 };
 
-export type StoreEffect = CosmeticEffect | ConvenienceEffect;
+/**
+ * Draft boost: for one draft, the club reel lands more often on clubs with top-rated players in the
+ * spun decade (weights in DRAFT_BOOSTS). Never a guaranteed player.
+ */
+export type DraftBoostEffect = { kind: 'draft-boost'; boost: DraftBoostId };
+export type DraftBoostId = 'star' | 'legend';
+
+/**
+ * Club reel weights per boost, by the best player rating a club has in the spun decade. A club
+ * without such players keeps weight 1, so every club can still come up.
+ */
+export const DRAFT_BOOSTS: Record<DraftBoostId, { itemId: string; name: string; minRating: number; weights: { atLeast: number; weight: number }[] }> = {
+  star: { itemId: 'boost-star', name: 'Star boost', minRating: 80, weights: [{ atLeast: 80, weight: 4 }] },
+  legend: {
+    itemId: 'boost-legend',
+    name: 'Legend boost',
+    minRating: 90,
+    weights: [
+      { atLeast: 90, weight: 8 },
+      { atLeast: 80, weight: 3 },
+    ],
+  },
+};
+
+/** A club's weight on the club reel under a boost (1 = normal). */
+export function boostWeight(boost: DraftBoostId | null | undefined, top: number | null | undefined): number {
+  if (!boost || top === null || top === undefined) return 1;
+  return DRAFT_BOOSTS[boost].weights.find((w) => top >= w.atLeast)?.weight ?? 1;
+}
+
+export type StoreEffect = CosmeticEffect | ConvenienceEffect | DraftBoostEffect;
 
 export type StoreItem = {
   id: string;
@@ -50,7 +83,8 @@ export type StoreItem = {
 
 /** Consumables are used up (convenience); everything else is owned for good (cosmetics). */
 export const isConsumable = (item: StoreItem) =>
-  item.effect.kind !== 'unlock-legend-tier' && (CONVENIENCE_KINDS as readonly string[]).includes(item.effect.kind);
+  item.effect.kind === 'draft-boost' ||
+  (item.effect.kind !== 'unlock-legend-tier' && (CONVENIENCE_KINDS as readonly string[]).includes(item.effect.kind));
 
 /** Kits and crests sold in the store (on top of the ones unlocked by level). */
 export const STORE_KITS = [
@@ -118,9 +152,11 @@ export const BOOSTS_ALLOWED = {
   league: true,
   cup: true,
   legends: true,
+  // Everyone gets the same seeded reels in the Daily, so no boost there.
   dailyChallenge: false,
-  headToHead: false,
-  leaderboard: false,
+  // A casual squad (boosted or not) can play head-to-head and be saved on the leaderboard.
+  headToHead: true,
+  leaderboard: true,
 } as const;
 
 const COSMETIC_KINDS: readonly CosmeticEffect['kind'][] = [
@@ -154,7 +190,7 @@ export function validateStoreItem(item: unknown): string[] {
   if (!x.name) problems.push('name missing');
   if (typeof x.price !== 'number' || x.price <= 0) problems.push('price: positive coins');
   const kind = (x.effect as { kind?: string } | undefined)?.kind;
-  if (!kind || ![...COSMETIC_KINDS, ...CONVENIENCE_KINDS].includes(kind as never)) {
+  if (!kind || ![...COSMETIC_KINDS, ...CONVENIENCE_KINDS, 'draft-boost'].includes(kind as never)) {
     problems.push(`effect: only cosmetics or convenience can be sold (got "${kind ?? 'none'}")`);
   }
   if (FORBIDDEN.test(`${x.id ?? ''} ${x.name ?? ''}`)) {
@@ -169,6 +205,8 @@ export const STORE_ITEMS: StoreItem[] = [
   { id: 'scout', name: 'Scout: two clubs to choose from', price: 60, effect: { kind: 'scout' } },
   { id: 'second-chance', name: 'Second chance: one more tournament', price: 100, effect: { kind: 'second-chance' } },
   { id: 'daily-practice', name: 'Daily practice try (not ranked)', price: 150, effect: { kind: 'daily-practice' } },
+  { id: 'boost-star', name: 'Star boost: clubs with 80+ stars more often (one draft)', price: 400, effect: { kind: 'draft-boost', boost: 'star' } },
+  { id: 'boost-legend', name: 'Legend boost: clubs with 90+ legends more often (one draft)', price: 1200, effect: { kind: 'draft-boost', boost: 'legend' } },
   { id: 'frame-gold', name: 'Gold share-card frame', price: 500, effect: { kind: 'card-frame', frameId: 'gold' } },
   { id: 'frame-retro', name: 'Retro share-card frame', price: 300, effect: { kind: 'card-frame', frameId: 'retro' } },
   { id: 'frame-neon', name: 'Neon share-card frame', price: 800, effect: { kind: 'card-frame', frameId: 'neon' } },

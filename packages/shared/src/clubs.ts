@@ -188,7 +188,8 @@ export function parseClubImport(input: unknown): ImportParseResult {
 export type ClubsResponse = {
   league: League;
   decade: number;
-  clubs: { club: string; clubSlug: string; seasons: number }[];
+  /** top: the club's best player rating (0–100) in the decade, null if none rated (draft boosts). */
+  clubs: { club: string; clubSlug: string; seasons: number; top?: number | null }[];
 };
 
 /** Prompt that asks an LLM for every club of every season of a decade, as a ClubImportFile. */

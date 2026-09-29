@@ -1,10 +1,10 @@
-# Football 82-0 – projekt kontextus
+# Spinvincible – projekt kontextus
 
 > Átadó dokumentum egy claude.ai-os kutató beszélgetésből (2026-09-25). A nyelv magyar, a technikai kifejezések angolul maradnak.
 
 ## A projekt
 
-A virális NBA-s **82-0** (82-0.com) játék futballos változata.
+Futballos draft-játék.
 
 **Az eredeti mechanika:**
 - A játékos pörget egy random csapatot + évtizedet (pl. "1960s Warriors"), választ egy játékost abból a keretből, beteszi a kezdőcsapatába, ismétli.
@@ -60,7 +60,7 @@ TypeScript end-to-end: React Native frontend Expoval, NextJS backend, MongoDB. D
 
 ### Tervezési egyszerűsítés
 
-Nem kell teljes keret. Az eredeti 82-0 is csak a csapat-évtized legjobb játékosait kínálja. Klubonként és évtizedenként a **top 8–15 játékos** elég.
+Nem kell teljes keret: a draftban elég a csapat-évtized legjobb játékosait kínálni. Klubonként és évtizedenként a **top 8–15 játékos** elég.
 Nagyságrend: 5 liga × ~20 klub × 7 évtized ≈ **700 csapat-évtized** – kurált adatbázisként összerakható.
 
 ### A szimuláció problémája
@@ -91,7 +91,6 @@ A 60-as, 70-es évekből játékosszinten jellemzően csak meccsszám és gól l
 - ClubElo API – http://clubelo.com/API
 - API-Football guide – https://www.api-football.com/news/post/how-to-get-started-with-api-football-the-complete-beginners-guide
 - felipeall/transfermarkt-api – https://github.com/felipeall/transfermarkt-api
-- Eredeti játék – https://www.82-0.com
 
 ## Frissítés (2026-09-25): játékos-import forrása – Transfermarkt
 

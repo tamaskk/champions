@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Sidebar } from "@/components/admin/sidebar";
 
 export const metadata: Metadata = {
-  title: "Champion Admin",
+  title: "Spinvincible Admin",
 };
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {

@@ -33,7 +33,7 @@ export async function shareText(message: string): Promise<'shared' | 'copied' | 
 }
 
 /** Screenshot of `view` as a PNG in the share sheet (web: downloaded). */
-export async function shareImage(view: RefObject<View | null>, title = 'My Champion XI'): Promise<'shared' | 'failed'> {
+export async function shareImage(view: RefObject<View | null>, title = 'My Spinvincible XI'): Promise<'shared' | 'failed'> {
   try {
     if (Platform.OS === 'web') {
       const uri = await captureRef(view, { format: 'png', result: 'data-uri' });
@@ -41,7 +41,7 @@ export async function shareImage(view: RefObject<View | null>, title = 'My Champ
       if (!doc) return 'failed';
       const a = doc.createElement('a');
       a.href = uri;
-      a.download = 'champion-xi.png';
+      a.download = 'spinvincible-xi.png';
       a.click();
       return 'shared';
     }
@@ -140,7 +140,7 @@ export function shareHeadline(results: readonly Result[]): ShareHeadline | null 
   return { big: best.detail.toUpperCase(), sub: best.title, dare: dare(), outcome: best.outcome };
 }
 
-/** Emoji summary of a squad, e.g. "⚽ Champion XI … 🟩🟩🟩🟩⬛ … 🏆 Serie A 1994/95 · 1st". */
+/** Emoji summary of a squad, e.g. "⚽ Spinvincible XI … 🟩🟩🟩🟩⬛ … 🏆 Serie A 1994/95 · 1st". */
 export function squadShareText(s: {
   username: string | null;
   formation: string;
@@ -153,7 +153,7 @@ export function squadShareText(s: {
   const green = Math.round(s.chemistry / 20);
   const head = shareHeadline(s.results);
   return [
-    `⚽ Champion XI${s.username ? ` · @${s.username}` : ''}`,
+    `⚽ Spinvincible XI${s.username ? ` · @${s.username}` : ''}`,
     head ? `🏆 ${head.big} · ${head.sub}` : '',
     s.results.length > 1 ? s.results.map((r) => RESULT_SQUARE[r.outcome]).join('') : '',
     `🧩 ${s.formation} · ⭐ OVR ${Math.round(s.overall)} · 🔗 CHEM ${s.chemistry}`,

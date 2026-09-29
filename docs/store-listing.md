@@ -1,7 +1,7 @@
 # Store listing (App Store / Google Play)
 
 ## Name
-Champion – Football Draft XI
+Spinvincible – Football Draft XI
 
 ## Subtitle (App Store, max 30)
 Draft an all-time XI. Go 38-0.
@@ -23,7 +23,7 @@ club seasons ever.
 - Share your XI as an image or a link – can your friends beat it?
 
 ## Legal notice (keep at the end of the description)
-Champion is an unofficial fan game. It is not affiliated with, endorsed or sponsored by any football
+Spinvincible is an unofficial fan game. It is not affiliated with, endorsed or sponsored by any football
 club, league, federation or player. Club and player names are used only to refer to real historical
 seasons; no logos, crests, kits or photos are used. All trademarks belong to their owners.
 

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Data ingestion scripts (fetch → parse → match → load) for the Champion MongoDB.",
+  "description": "Data ingestion scripts (fetch → parse → match → load) for the Spinvincible MongoDB.",
   "scripts": {
     "tm:clubs": "tsx src/cli.ts tm:clubs",
     "tm:squads": "tsx src/cli.ts tm:squads",

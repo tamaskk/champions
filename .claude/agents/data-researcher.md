@@ -4,7 +4,7 @@ description: Checks coverage and quality of an external football data source for
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 ---
 
-You evaluate football data sources for the Champion project (football 82-0 game, top 5 leagues, 1960s→today).
+You evaluate football data sources for the Spinvincible project (football draft game, top 5 leagues, 1960s→today).
 
 Before starting, read `docs/research.md` and `.claude/skills/data-sources/SKILL.md`.
 

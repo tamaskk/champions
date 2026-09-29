@@ -4,7 +4,7 @@ import { adminConfigured } from "@/server/admin-auth";
 
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Champion Admin · Sign in" };
+export const metadata: Metadata = { title: "Spinvincible Admin · Sign in" };
 
 export default async function AdminLoginPage({ searchParams }: PageProps<"/admin-login">) {
   const { next } = await searchParams;
@@ -13,7 +13,7 @@ export default async function AdminLoginPage({ searchParams }: PageProps<"/admin
       <div className="w-full max-w-sm rounded-[28px] bg-white p-8 shadow-sm">
         <div className="mb-6 flex items-center gap-2.5">
           <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">82</span>
-          <span className="text-lg font-semibold tracking-tight text-ink">Champion Admin</span>
+          <span className="text-lg font-semibold tracking-tight text-ink">Spinvincible Admin</span>
         </div>
         {adminConfigured() ? (
           <LoginForm next={typeof next === "string" ? next : "/admin"} />

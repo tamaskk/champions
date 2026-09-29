@@ -62,9 +62,9 @@ Jelmagyarázat: 🔴 halott gomb (koppintásra semmi) · 🟠 kamu / beégetett 
 
 | # | Hol | Elem | Állapot |
 |---|---|---|---|
-| 31 ⚪ | `components/shop.tsx:51-55`, `:304-420` | Coin-csomagok, Starter pack, Champion Club „JOIN”, „PREMIUM PASS” | Fejlesztői buildben szimulált vásárlás (pénz nem mozog); éles buildben tartósan letiltva. A **Pass fülön nincs magyarázat**, miért szürke a gomb (a Coins fülön van) |
+| 31 ⚪ | `components/shop.tsx:51-55`, `:304-420` | Coin-csomagok, Starter pack, Spinvincible Club „JOIN”, „PREMIUM PASS” | Fejlesztői buildben szimulált vásárlás (pénz nem mozog); éles buildben tartósan letiltva. A **Pass fülön nincs magyarázat**, miért szürke a gomb (a Coins fülön van) |
 | 32 ⚪ | `components/shop.tsx:472-531` | „Watch & earn” reklám | Fejlesztőben 5 mp-es kamu visszaszámlálás; élesben mindig letiltva |
-| 33 ⚪ | `components/shop.tsx:371` | Champion Club „no ads” | Olyan reklámot ígér levenni, ami nincs |
+| 33 ⚪ | `components/shop.tsx:371` | Spinvincible Club „no ads” | Olyan reklámot ígér levenni, ami nincs |
 
 ## 6. Admin (web)
 

@@ -292,7 +292,7 @@ export async function claim(body: { userId?: unknown; source?: unknown; key?: un
       break;
     }
     case "club-daily": {
-      if (!w.entitlements.clubUntil || w.entitlements.clubUntil < new Date()) return reject("Champion Club only", w.balance);
+      if (!w.entitlements.clubUntil || w.entitlements.clubUntil < new Date()) return reject("Spinvincible Club only", w.balance);
       amount = CLUB_DAILY_COINS;
       ledgerKey = `club-daily:${today()}`;
       // Members also get a daily practice try and the Club frame.

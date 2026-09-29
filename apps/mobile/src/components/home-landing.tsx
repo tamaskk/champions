@@ -95,10 +95,7 @@ export function HomeLanding({
               <View>
                 <View style={styles.baseline}>
                   <Txt v="h28" style={styles.upper}>
-                    CHAMPION
-                  </Txt>
-                  <Txt v="h20" color={C.gold}>
-                    XI
+                    SPINVINCIBLE
                   </Txt>
                 </View>
                 <Txt v="bodySemi" color={C.green}>
@@ -109,11 +106,8 @@ export function HomeLanding({
             <View style={styles.viral}>
               <Icon name="emoji_events" size={14} color={C.gold} style={{ marginTop: 1 }} />
               <Txt v="body" color={C.textMuted} style={styles.flex}>
-                Inspired by the viral{' '}
-                <Txt v="bodySemi" style={{ letterSpacing: 0 }}>
-                  82-0 challenge
-                </Txt>
-                . Top 5 European leagues from 1960 to today.
+                Spin the reels, draft legends, chase the unbeaten season. Top 5 European leagues from 1960 to
+                today.
               </Txt>
             </View>
           </View>

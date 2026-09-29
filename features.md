@@ -1,4 +1,4 @@
-# Champion – funkciók és ötletek
+# Spinvincible – funkciók és ötletek
 
 Két rész: **mi van már kész** az appban, és **mit tennék még bele**, prioritás szerint. Az ötletek mellett ott van, mire épülnek a meglévő adatokból / kódból, és nagyjából mekkora munka (S / M / L).
 
@@ -83,7 +83,7 @@ Ugyanaz a draft, szűkített pörgetéssel:
 - **XP és szintek (M):** a dizájnban lévő „+1,200 XP”, „+100 XP DRAFT” jelvények – draft, győzelem, 38-0 ad XP-t; szintek kozmetikai jutalommal (mezszín, címer).
 - **Statisztika oldal (S):** összes draft, győzelmi arány, legtöbbet draftolt játékos, kedvenc formáció.
 
-### 3.2 Megosztás (S–M) – a virális növekedés kulcsa (az eredeti 82-0 is ettől lett nagy)
+### 3.2 Megosztás (S–M) – a virális növekedés kulcsa
 - **Share kártya képként:** felállás a pályán + Overall + Chemistry + szezon-eredmény („38-0 🏆 Serie A 08/09”), `react-native-view-shot`-tal kép, natív share sheet.
 - **Emoji-összefoglaló** szövegként (Wordle-stílus) a Daily Challenge-hez.
 - **Link a csapathoz:** a megosztott link megnyitja ugyanazt a XI-t, a másik kipróbálhatja ellene.
@@ -117,7 +117,7 @@ Ugyanaz a draft, szűkített pörgetéssel:
 | # | Funkció | Miért | Méret |
 |---|---|---|---|
 | 1 | Mentés eszközön | a rekordok / Hall of Fame most elvesznek | S |
-| 2 | Share kártya | virális növekedés, az eredeti 82-0 ettől lett nagy | S–M |
+| 2 | Share kártya | virális növekedés | S–M |
 | 3 | Gauntlet (Survival) | új mód szinte csak a meglévő motorral | S–M |
 | 4 | Daily Challenge | napi visszatérés, a dizájnban már kész a helye | M |
 | 5 | Achievementek + XP | hosszú távú motiváció | M |

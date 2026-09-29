@@ -467,7 +467,7 @@ export function dailyShareText(ch: DailyChallenge, date: string, o: DailyOutcome
   const won = checks.every((x) => x.ok);
   const squares = checks.map((x) => (x.ok ? '🟩' : '🟥')).join('');
   return [
-    `Champion Daily ${date} ${won ? '🏆' : '❌'}`,
+    `Spinvincible Daily ${date} ${won ? '🏆' : '❌'}`,
     `${ch.title} (${ch.tier})`,
     `${squares}  OVR ${Math.round(o.overall)} · CHEM ${o.chemistry}`,
     o.match ? `⚽ ${o.match.yours}–${o.match.theirs}` : '',
@@ -505,7 +505,7 @@ export function validateDaily(x: unknown): string[] {
 
 /** Prompt for Claude (chat or CLI) that returns new daily challenges as a JSON array. */
 export function buildDailyPrompt(count: number, startDate: string): string {
-  return `You design daily challenges for "Champion", a football draft game: the player spins a formation, then for each spot a decade (1960s–2020s), a league (ENG, ESP, ITA, GER, FRA) and a club, and drafts a real player from that club-decade squad. Team chemistry (0–100) rewards team-mates, same club, compatriots; overall ≈ average player rating (0–100, 60 = regular, 85+ elite).
+  return `You design daily challenges for "Spinvincible", a football draft game: the player spins a formation, then for each spot a decade (1960s–2020s), a league (ENG, ESP, ITA, GER, FRA) and a club, and drafts a real player from that club-decade squad. Team chemistry (0–100) rewards team-mates, same club, compatriots; overall ≈ average player rating (0–100, 60 = regular, 85+ elite).
 
 Write ${count} new challenges, one per day starting ${startDate} (set "date" for each). Mix difficulty: ~40% SILVER (xp 400), ~40% GOLD (xp 700), ~20% LEGEND (xp 1200). Make them themed and fun (eras, leagues, famous tactics, rivalries).
 

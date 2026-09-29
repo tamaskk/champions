@@ -374,7 +374,7 @@ function CoinsTab({ busy, run }: TabProps) {
         ))}
       </Section>
 
-      <Section title="Champion Club">
+      <Section title="Spinvincible Club">
         <View style={[styles.item, clubActive && styles.highlight]}>
           <Icon name="crown" size={20} color={C.gold} />
           <View style={styles.flex}>
@@ -391,7 +391,7 @@ function CoinsTab({ busy, run }: TabProps) {
               height={36}
               labelType="capUpper"
               disabled={!PURCHASES_SIMULATED || busy !== null}
-              onPress={() => buyProduct(CLUB_SUBSCRIPTION.id, 'Champion Club')}
+              onPress={() => buyProduct(CLUB_SUBSCRIPTION.id, 'Spinvincible Club')}
             />
           )}
         </View>
@@ -559,7 +559,7 @@ function FreeTab({ busy, run }: TabProps) {
             labelType="capUpper"
             onPress={() =>
               shareText(
-                `⚽ Draft an all-time XI with me in Champion! Enter my invite code ${wallet.inviteCode} and we both get ${INVITE_COINS} coins.`,
+                `⚽ Draft an all-time XI with me in Spinvincible! Enter my invite code ${wallet.inviteCode} and we both get ${INVITE_COINS} coins.`,
               )
             }
           />

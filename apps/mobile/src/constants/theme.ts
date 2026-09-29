@@ -8,7 +8,7 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 export const Colors = {
-  // The app follows the dark-only Champion design (see src/design/tokens.ts).
+  // The app follows the dark-only Spinvincible design (see src/design/tokens.ts).
   light: {
     text: '#dce3f1',
     background: '#0d141e',

@@ -1,6 +1,6 @@
-# Champion – Football 82-0
+# Spinvincible – football draft game
 
-Football version of the viral NBA game 82-0 (82-0.com). Player spins a random club + decade, picks one player from that squad, repeats until the XI is built (one player per decade, one re-spin each for club and decade). A simulation engine rates the squad and says whether it would win the league unbeaten.
+Football draft game. Player spins a random club + decade, picks one player from that squad, repeats until the XI is built (one player per decade, one re-spin each for club and decade). A simulation engine rates the squad and says whether it would win the league unbeaten.
 
 Scope: top 5 European leagues (ENG, ESP, ITA, GER, FRA), 1960s → today. Full background, data sources, licensing notes: `docs/research.md`. Read it before touching data ingestion or the simulation.
 
@@ -9,7 +9,7 @@ Scope: top 5 European leagues (ENG, ESP, ITA, GER, FRA), 1960s → today. Full b
 pnpm workspaces + Turborepo. TypeScript everywhere.
 
 - `apps/mobile` – Expo (React Native, Expo Router). Has its own `CLAUDE.md`/`AGENTS.md` – follow them.
-  - UI follows the Figma "Champion" design (dark only): tokens, fonts (Inter, Space Grotesk, Material Symbols icons) and shared UI in `src/design/`; custom pill tab bar in `src/components/pill-tabs.tsx`. Session records (Home "Your records", Explore "Hall of Fame") live in memory only: `src/game/session.ts`.
+  - UI follows the Figma "Spinvincible" design (dark only): tokens, fonts (Inter, Space Grotesk, Material Symbols icons) and shared UI in `src/design/`; custom pill tab bar in `src/components/pill-tabs.tsx`. Session records (Home "Your records", Explore "Hall of Fame") live in memory only: `src/game/session.ts`.
 - `apps/web` – Next.js (App Router). Backend API via route handlers in `src/app/api/**`. Deployed on Vercel. Has its own `AGENTS.md`.
   - `/admin` – data admin (dashboard, clubs, JSON club import). Login at `/admin-login` with `ADMIN_USER` / `ADMIN_PASSWORD` from `.env` (HMAC-signed session cookie, `ADMIN_SESSION_SECRET`); `src/proxy.ts` guards every /admin page and every admin Server Action re-checks the session. Mongo access only in `src/server/**`.
 - `packages/shared` – `@champion/shared`: domain types/constants shared by both apps. Source-only (no build step); Next consumes it via `transpilePackages`.

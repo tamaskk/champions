@@ -1,8 +1,8 @@
-# Champion ⚽ – Football 82-0
+# Spinvincible ⚽ – football draft game
 
 **Draft an all-time XI from 65 years of European football and see if it can win the league unbeaten.**
 
-Champion is a football take on the viral NBA game [82-0](https://www.82-0.com): spin a random decade,
+Spinvincible is a football draft game: spin a random decade,
 league and club, pick a player from that real squad, repeat until your XI is complete – then let a
 match engine fitted on 113,000 real matches decide how good it really is.
 
@@ -355,6 +355,6 @@ cd apps/mobile && npx expo install <pkg>   # mobile dependencies always via expo
 
 ## Legal
 
-Champion is an unofficial fan game. It is not affiliated with, endorsed or sponsored by any football
+Spinvincible is an unofficial fan game. It is not affiliated with, endorsed or sponsored by any football
 club, league, federation or player. Club and player names are used only to refer to real historical
 seasons; no logos, crests, kits or photos are used. All trademarks belong to their owners.

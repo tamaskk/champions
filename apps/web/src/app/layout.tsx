@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Champion",
-  description: "Football 82-0",
+  title: "Spinvincible",
+  description: "Spin the reels, draft an all-time football XI, chase the unbeaten season.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

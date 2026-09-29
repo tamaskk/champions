@@ -23,7 +23,7 @@ export function Sidebar() {
     <aside className="flex w-full shrink-0 flex-col gap-8 border-b border-line bg-white/60 p-6 lg:w-64 lg:border-r lg:border-b-0">
       <Link href="/admin" className="flex items-center gap-2.5">
         <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-white">82</span>
-        <span className="text-lg font-semibold tracking-tight text-ink">Champion</span>
+        <span className="text-lg font-semibold tracking-tight text-ink">Spinvincible</span>
       </Link>
 
       <nav className="flex flex-col gap-1">

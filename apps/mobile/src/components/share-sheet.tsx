@@ -105,7 +105,7 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
             <View style={styles.cardTop}>
               <View style={styles.flex}>
                 <Txt v="capUpper" color={C.green}>
-                  CHAMPION · DRAFTED XI
+                  SPINVINCIBLE · DRAFTED XI
                 </Txt>
                 <Txt v="h20" numberOfLines={1}>
                   {data.username ? `@${data.username}` : 'My XI'}
@@ -160,7 +160,7 @@ export function ShareSheet({ data, onClose }: { data: ShareData; onClose: () => 
               </View>
             ))}
             <Txt v="tinyBold" color={C.green} style={styles.brand}>
-              {(head?.dare ?? 'Can your XI beat mine?').toUpperCase()} · CHAMPION
+              {(head?.dare ?? 'Can your XI beat mine?').toUpperCase()} · SPINVINCIBLE
             </Txt>
             <LegalNote compact />
           </View>

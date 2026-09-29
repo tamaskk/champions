@@ -1,5 +1,5 @@
 /**
- * Design tokens of the Champion design (Figma "Champion" file, dark only).
+ * Design tokens of the Spinvincible design (Figma "Champion" file, dark only).
  * Every screen takes its colours, fonts and radii from here.
  */
 

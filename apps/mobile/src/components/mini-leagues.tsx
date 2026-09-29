@@ -259,7 +259,7 @@ function LeagueTable({
   const invite = async () => {
     if (!d) return;
     const r = await shareText(
-      `Join my Champion mini-league "${d.name}" – same Daily Challenge, weekly table.\nInvite code: ${d.code}\n(Ranks → Leagues → Join with code)`,
+      `Join my Spinvincible mini-league "${d.name}" – same Daily Challenge, weekly table.\nInvite code: ${d.code}\n(Ranks → Leagues → Join with code)`,
     );
     setNote(r === 'copied' ? 'Invite copied to the clipboard.' : r === 'failed' ? 'Sharing failed.' : null);
   };

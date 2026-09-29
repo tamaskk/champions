@@ -145,7 +145,7 @@ Play ársávjából jön, ezért ezek csak közelítések.
 
 - **Season Pass (havi):** 3,99–4,99 €. Ingyenes és prémium sáv, szezon XP-vel lehet haladni. A
   prémium sáv végigjátszva kb. 1 000 coint + kozmetikát ad vissza.
-- **Champion Club előfizetés:** 2,99 €/hó. Napi 50 coin, reklámmentes, napi +1 Daily gyakorló
+- **Spinvincible Club előfizetés:** 2,99 €/hó. Napi 50 coin, reklámmentes, napi +1 Daily gyakorló
   próba, havi exkluzív keret.
 - **Reklám:** csak rewarded videó, önkéntes. Kényszerített reklám nincs. Ha mégis lenne,
   reklámmentesség egyszeri 3,99 €-ért.
@@ -214,12 +214,12 @@ utána a monetizáció.
    (fejlesztői módban): élesben kell egy reklámhálózat (pl. AdMob) szerver oldali visszaigazolással
    (SSV), és `ADS_SIMULATED` nélkül a szerver nem fizet érte.
 5. ⚠️ Részben: RevenueCat webhook kész (`/api/iap/revenuecat`, `REVENUECAT_WEBHOOK_AUTH`),
-   coin-csomagok, starter pack, Season Pass és Champion Club jóváírása. Hiányzik: a
+   coin-csomagok, starter pack, Season Pass és Spinvincible Club jóváírása. Hiányzik: a
    `react-native-purchases` SDK (Expo dev build kell), a termékek felvétele az App Store /
    Play Console-ban és a RevenueCatben, valamint a Sign in with Apple / Google. Addig a vásárlás
    fejlesztői módban szimulált (`/api/wallet/simulate-purchase`, élesben 404), a fiók pedig
    mentési kóddal vihető át másik telefonra (Profil → Account backup).
-6. ✅ Season Pass (30 fokozat, havi, ingyenes + prémium sáv) és Champion Club (napi 50 coin +
+6. ✅ Season Pass (30 fokozat, havi, ingyenes + prémium sáv) és Spinvincible Club (napi 50 coin +
    napi 1 Daily gyakorló próba + Club keret) a szerveren; a vásárlásuk az 5. ponton múlik.
    Reklámmentesség: nincs kényszerített reklám, így külön reklámmentes vásárlás sem kell.
 

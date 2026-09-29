@@ -61,7 +61,7 @@ export default function RanksScreen() {
     if (params.squad) setOpenId(params.squad);
   }, [params.squad]);
 
-  // A shared link "Challenge this XI" (champion://ranks?challenge=ID): the squad waits for your next draft.
+  // A shared link "Challenge this XI" (spinvincible://ranks?challenge=ID): the squad waits for your next draft.
   useEffect(() => {
     if (!params.challenge) return;
     setOpenId(params.challenge);

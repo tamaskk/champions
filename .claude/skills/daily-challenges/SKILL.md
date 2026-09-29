@@ -1,6 +1,6 @@
 ---
 name: daily-challenges
-description: Generate new Daily Challenges for Champion (themed rule sets, one per day) as validated JSON and schedule them via the admin. Use when asked to create, plan or fill the daily challenge calendar.
+description: Generate new Daily Challenges for Spinvincible (themed rule sets, one per day) as validated JSON and schedule them via the admin. Use when asked to create, plan or fill the daily challenge calendar.
 ---
 
 # Daily challenges

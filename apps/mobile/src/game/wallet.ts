@@ -77,13 +77,13 @@ export async function claim(source: ClaimSource, key: string, label: string): Pr
   }
 }
 
-/** On app start: load the wallet, collect the daily login (and the Champion Club's daily coins). */
+/** On app start: load the wallet, collect the daily login (and the Spinvincible Club's daily coins). */
 export async function initWallet() {
   const wallet = await refreshWallet();
   if (!wallet) return;
   if (!wallet.login.claimedToday) await claim('daily-login', 'today', `Daily login · day ${((wallet.login.streakDay % 7) || 0) + 1}`);
   if (wallet.entitlements.clubUntil && new Date(wallet.entitlements.clubUntil) > new Date()) {
-    await claim('club-daily', 'today', 'Champion Club daily coins');
+    await claim('club-daily', 'today', 'Spinvincible Club daily coins');
   }
   await claimH2HRanks(wallet);
   await refreshWallet();

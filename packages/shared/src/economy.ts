@@ -67,7 +67,7 @@ export const INVITE_COINS = 300;
 /** Invite codes can only be redeemed by players this new (days since the account was created). */
 export const INVITE_MAX_ACCOUNT_AGE_DAYS = 7;
 
-/** Champion Club subscribers collect this once a day (with a daily-practice try). */
+/** Spinvincible Club subscribers collect this once a day (with a daily-practice try). */
 export const CLUB_DAILY_COINS = 50;
 /** Members' exclusive share-card frame. */
 export const CLUB_FRAME = 'frame-club';

@@ -92,7 +92,7 @@ export function Avatar() {
 }
 
 /**
- * Top bar. `home` = app icon + "CHAMPION DRAFT" + title, bell and profile; `back` = back arrow,
+ * Top bar. `home` = app icon + "SPINVINCIBLE" + title, bell and profile; `back` = back arrow,
  * app icon and title, profile. Sits over the content (translucent), below the status bar.
  */
 export function ScreenHeader({
@@ -122,7 +122,7 @@ export function ScreenHeader({
         <View style={styles.headerText}>
           {!onBack && showBell && (
             <Txt v="capUpper" color={C.green}>
-              CHAMPION DRAFT
+              SPINVINCIBLE
             </Txt>
           )}
           <Txt v="h20" style={styles.headerTitle} numberOfLines={1}>

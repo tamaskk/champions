@@ -10,9 +10,9 @@ const OUTCOME_EMOJI = { champion: "🏆", top: "🥈", win: "✅", draw: "🤝",
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const squad = await squadDetail((await params).id).catch(() => null);
-  if (!squad) return { title: "Champion" };
+  if (!squad) return { title: "Spinvincible" };
   return {
-    title: `@${squad.username}'s XI · OVR ${Math.round(squad.overall)} · Champion`,
+    title: `@${squad.username}'s XI · OVR ${Math.round(squad.overall)} · Spinvincible`,
     description: `${squad.formation} · CHEM ${squad.chemistry} – can your XI beat it?`,
   };
 }
@@ -27,7 +27,7 @@ export default async function SharedSquadPage({ params }: Props) {
     <main className="min-h-screen bg-[#0d141e] px-4 py-10 text-[#dce3f1]">
       <div className="mx-auto flex max-w-md flex-col gap-5">
         <header className="rounded-2xl bg-[#151c26] p-6 text-center">
-          <p className="text-xs font-semibold tracking-widest text-[#6ddc9e] uppercase">Champion · shared XI</p>
+          <p className="text-xs font-semibold tracking-widest text-[#6ddc9e] uppercase">Spinvincible · shared XI</p>
           <h1 className="mt-2 text-2xl font-bold">@{squad.username}</h1>
           <p className="mt-1 text-sm text-[#bdcabe]">{squad.formation} formation</p>
           <div className="mt-5 grid grid-cols-3 gap-2">
@@ -80,16 +80,16 @@ export default async function SharedSquadPage({ params }: Props) {
         </section>
 
         <a
-          href={`champion://ranks?challenge=${squad.id}`}
+          href={`spinvincible://ranks?challenge=${squad.id}`}
           className="rounded-2xl bg-[#3093f8] py-4 text-center font-bold text-[#002b52]"
         >
           Challenge this XI in the app
         </a>
         <a
-          href={`champion://ranks?squad=${squad.id}`}
+          href={`spinvincible://ranks?squad=${squad.id}`}
           className="rounded-2xl bg-[#232a35] py-3 text-center font-semibold"
         >
-          Open in Champion
+          Open in Spinvincible
         </a>
         <p className="text-center text-xs text-[#879489]">
           Draft your own XI from 60 years of European football – then play against this one.

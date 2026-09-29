@@ -120,7 +120,7 @@ export const CARD_FRAMES: Record<string, { name: string; colors: [string, string
   silver: { name: 'Silver', colors: ['#9aa5b1', '#e6ebf0'] },
   platinum: { name: 'Platinum', colors: ['#7fd1c7', '#e8fffb'] },
   champion: { name: 'Champion', colors: ['#ffc72c', '#30a46c'] },
-  club: { name: 'Champion Club', colors: ['#3093f8', '#ffc72c'] },
+  club: { name: 'Spinvincible Club', colors: ['#3093f8', '#ffc72c'] },
   legend: { name: 'H2H Legend', colors: ['#ff3b5c', '#ffc72c'] },
 };
 
@@ -243,4 +243,4 @@ export const DISCLAIMER_SHORT =
 
 /** Full notice: About / store listing. */
 export const DISCLAIMER =
-  'Champion is an unofficial fan game. It is not affiliated with, endorsed or sponsored by any football club, league, federation or player. Club and player names are used only to refer to real historical seasons; no logos, crests, kits or photos are used. All trademarks belong to their owners.';
+  'Spinvincible is an unofficial fan game. It is not affiliated with, endorsed or sponsored by any football club, league, federation or player. Club and player names are used only to refer to real historical seasons; no logos, crests, kits or photos are used. All trademarks belong to their owners.';

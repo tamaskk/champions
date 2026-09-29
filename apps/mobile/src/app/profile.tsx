@@ -410,7 +410,7 @@ export default function ProfileScreen() {
                   label="SAVE"
                   height={40}
                   labelType="capUpper"
-                  onPress={() => shareText(`Champion account backup code (keep it secret): ${user.userId}`)}
+                  onPress={() => shareText(`Spinvincible account backup code (keep it secret): ${user.userId}`)}
                 />
               )}
             </View>

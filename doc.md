@@ -1,4 +1,4 @@
-# Champion – az app teljes leírása dizájn-generáláshoz
+# Spinvincible – az app teljes leírása dizájn-generáláshoz
 
 > Ez a dokumentum egy mobilapp (iOS + Android, Expo / React Native) **minden képernyőjét, elemét, állapotát és interakcióját** írja le, hogy egy AI (vagy dizájner) új vizuális dizájnt tervezhessen hozzá. A funkciók és a folyamat adottak – a **kinézet szabadon újragondolható**. A felületen lévő szövegek angolul vannak (az app nyelve angol), ezért azokat itt is eredeti formájukban, `idézőjelben` írom.
 
@@ -6,12 +6,12 @@
 
 ## 1. Mi ez az app?
 
-**Champion** egy futballos „draft” játék, a virális NBA-s **82-0** játék (82-0.com) focis változata.
+**Spinvincible** egy futballos „draft” játék.
 
 - A játékos egy **felállást (formációt)** pörget, majd poszthelyenként **pörgetőgépen (slot machine)** kisorsol egy **évtizedet + ligát + klubot**, és annak a klubnak az adott évtizedbeli **valódi keretéből** választ egy játékost.
 - 11 játékosból összeáll egy **álomcsapat** különböző korokból (pl. Baresi a 80-as évek Milanjából, Messi a 2010-es évek Barcájából).
 - A csapatnak van **Rating** (játékoserő) és **Chemistry** (összhang) értéke, ebből jön az **Overall**.
-- A kész csapattal **tornákon/módokban** lehet játszani: egy **meccs** egy valódi klub ellen, vagy egy **teljes bajnoki szezon** szimulálása. A végső kérdés az 82-0 szellemében: *veretlenül megnyernéd-e a bajnokságot?*
+- A kész csapattal **tornákon/módokban** lehet játszani: egy **meccs** egy valódi klub ellen, vagy egy **teljes bajnoki szezon** szimulálása. A végső kérdés: *veretlenül megnyernéd-e a bajnokságot?*
 
 **Adatok:** Top 5 európai liga (angol, spanyol, olasz, német, francia), 1960-tól napjainkig. Minden játékosnak valós statisztikái (meccsek, gólok), posztjai és 0–100-as **ratingje** van (Messi 2011/12 = 100).
 
@@ -66,7 +66,7 @@ Minden játék közbeni képernyőn a bal felső sarokban egy **kerek `✕` gomb
 - **Állapot:** a játék még nem indult.
 - **Elemek:**
   - Egyetlen elsődleges gomb középen: `Regular game` (kék, fehér félkövér szöveg).
-- **Dizájn-lehetőség:** jelenleg nagyon üres. Ide jól illene: logó / „Champion” felirat, rövid tagline (pl. „Build an all-time XI. Go unbeaten.”), háttérillusztráció (stadion, pálya), esetleg későbbi módok (pl. „Daily challenge”) helye. A `Regular game` a fő CTA.
+- **Dizájn-lehetőség:** jelenleg nagyon üres. Ide jól illene: logó / „Spinvincible” felirat, rövid tagline (pl. „Build an all-time XI. Go unbeaten.”), háttérillusztráció (stadion, pálya), esetleg későbbi módok (pl. „Daily challenge”) helye. A `Regular game` a fő CTA.
 
 ### [2] Formáció-pörgetés
 

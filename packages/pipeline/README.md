@@ -1,6 +1,6 @@
 # @champion/pipeline
 
-Data ingestion CLI for the Champion MongoDB. Stages follow `.claude/skills/data-pipeline`:
+Data ingestion CLI for the Spinvincible MongoDB. Stages follow `.claude/skills/data-pipeline`:
 fetch (cached) → parse (pure) → match → load (idempotent upserts) → coverage report.
 
 ## Transfermarkt squads

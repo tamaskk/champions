@@ -28,3 +28,21 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Landing page: the reels scroll one full set, then loop seamlessly (the list is doubled). */
+@keyframes landing-reel {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-1 * var(--reel-height)));
+  }
+}
+.landing-reel {
+  animation: landing-reel linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-reel {
+    animation: none;
+  }
+}

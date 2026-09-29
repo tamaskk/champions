@@ -15,6 +15,7 @@ const NAV = [
   { href: "/admin/import", label: "Import", icon: UploadIcon },
   { href: "/admin/daily", label: "Daily challenges", icon: CalendarIcon },
   { href: "/admin/coins", label: "Coins", icon: TrophyIcon },
+  { href: "/admin/waitlist", label: "Waitlist", icon: UsersIcon },
 ] as const;
 
 export function Sidebar() {

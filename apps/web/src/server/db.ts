@@ -121,6 +121,15 @@ export type MiniLeagueDoc = {
   createdAt: Date;
 };
 
+/** Someone waiting for the app launch (landing page sign-up). */
+export type WaitlistDoc = {
+  email: string;
+  createdAt: Date;
+  /** Where the sign-up came from (hero / bottom form). */
+  source: string;
+  locale: string | null;
+};
+
 const globalForMongo = globalThis as unknown as { mongo?: Promise<Db> };
 
 async function connect(uri: string): Promise<Db> {
@@ -151,6 +160,7 @@ async function connect(uri: string): Promise<Db> {
     { key: { userId: 1, key: 1 }, unique: true },
     { key: { userId: 1, source: 1, createdAt: -1 } },
   ]);
+  await db.collection<WaitlistDoc>("waitlist").createIndexes([{ key: { email: 1 }, unique: true }, { key: { createdAt: -1 } }]);
   await db.collection<DailyScoreDoc>("dailyScores").createIndexes([
     { key: { userId: 1, date: 1 }, unique: true },
     { key: { date: 1 } },
@@ -205,6 +215,10 @@ export async function wallets(): Promise<Collection<WalletDoc>> {
 
 export async function coinLedger(): Promise<Collection<LedgerDoc>> {
   return (await getDb()).collection<LedgerDoc>("coinLedger");
+}
+
+export async function waitlist(): Promise<Collection<WaitlistDoc>> {
+  return (await getDb()).collection<WaitlistDoc>("waitlist");
 }
 
 export async function dailyScores(): Promise<Collection<DailyScoreDoc>> {

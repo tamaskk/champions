@@ -29,20 +29,24 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Landing page: the reels scroll one full set, then loop seamlessly (the list is doubled). */
-@keyframes landing-reel {
-  from {
-    transform: translateY(0);
-  }
+/* Landing page: the stadium board scrolls one quarter of its (4× repeated) content, then loops. */
+@keyframes landing-ticker {
   to {
-    transform: translateY(calc(-1 * var(--reel-height)));
+    transform: translateX(-25%);
   }
 }
-.landing-reel {
-  animation: landing-reel linear infinite;
+.landing-ticker {
+  animation: landing-ticker 40s linear infinite;
+}
+/* The ticket: punched notches where the stub tears off. */
+.landing-ticket {
+  -webkit-mask: radial-gradient(circle 14px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 14px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle 14px at 0 50%, transparent 98%, #000) left / 51% 100% no-repeat,
+    radial-gradient(circle 14px at 100% 50%, transparent 98%, #000) right / 51% 100% no-repeat;
 }
 @media (prefers-reduced-motion: reduce) {
-  .landing-reel {
+  .landing-ticker {
     animation: none;
   }
 }

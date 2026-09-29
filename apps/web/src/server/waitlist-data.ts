@@ -44,3 +44,8 @@ export async function waitlistStats(limit = 200) {
 export async function allWaitlist() {
   return (await waitlist()).find({}, { projection: { _id: 0 } }).sort({ createdAt: 1 }).toArray();
 }
+
+/** How many are waiting (landing page social proof). */
+export async function waitlistCount(): Promise<number> {
+  return (await waitlist()).estimatedDocumentCount();
+}

@@ -1,5 +1,6 @@
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Big_Shoulders, DM_Mono, Inter_Tight } from "next/font/google";
 
-// The app's fonts (apps/mobile/src/design/tokens.ts), for the landing page.
-export const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
-export const body = Inter({ subsets: ["latin"], variable: "--font-body" });
+// Landing page type: stadium-signage display, a tight grotesk for reading, mono for the "scoreboard".
+export const display = Big_Shoulders({ subsets: ["latin"], weight: ["700", "800", "900"], variable: "--font-display" });
+export const body = Inter_Tight({ subsets: ["latin"], variable: "--font-body" });
+export const mono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });

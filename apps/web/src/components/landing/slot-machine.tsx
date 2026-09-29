@@ -19,7 +19,7 @@ const POSITION_WORD: Record<string, string> = {
   W: "winger",
   ST: "striker",
 };
-const ROW = 72;
+const ROW = 56;
 const LOOPS = 40;
 const SPIN_MS = [1100, 1500, 1900];
 
@@ -60,19 +60,19 @@ export function SlotMachine() {
   };
 
   return (
-    <div className="border-2 border-[#0d141e] bg-[#0d141e] p-4 shadow-[10px_10px_0_#ffc72c] sm:p-5">
-      <div className="mb-4 flex items-center justify-between font-[family-name:var(--font-mono)] text-[11px] tracking-[0.2em] text-[#8a94a3] uppercase">
-        <span>Draft · spin 01/11</span>
+    <div className="p-5">
+      <div className="mb-4 flex items-center justify-between text-xs text-white/55">
+        <span>Spin 01 / 11</span>
         <span className="flex items-center gap-1.5">
-          <span className={`size-1.5 ${spinning ? "animate-pulse bg-[#ffc72c]" : "bg-[#6ddc9e]"}`} />
+          <span className={`size-1.5 rounded-full ${spinning ? "animate-pulse bg-[#ffc72c]" : "bg-[#6ddc9e]"}`} />
           {spinning ? "Spinning" : "Ready"}
         </span>
       </div>
 
-      <div className="relative grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {REELS.map((reel, i) => (
           <div key={reel.label}>
-            <div className="relative overflow-hidden border border-white/15 bg-[#080f18]" style={{ height: ROW * 3 }}>
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30" style={{ height: ROW * 3 }}>
               <div
                 className="flex flex-col will-change-transform"
                 style={{
@@ -85,8 +85,8 @@ export function SlotMachine() {
                   return (
                     <div
                       key={k}
-                      className={`grid place-items-center font-[family-name:var(--font-display)] text-[40px] leading-none font-extrabold transition-colors duration-300 ${
-                        on ? "text-[#ffc72c]" : "text-[#3a4454]"
+                      className={`grid place-items-center text-[26px] font-light tabular-nums transition-colors duration-300 ${
+                        on ? "text-white" : "text-white/20"
                       }`}
                       style={{ height: ROW }}
                     >
@@ -95,26 +95,28 @@ export function SlotMachine() {
                   );
                 })}
               </div>
-              <div className="pointer-events-none absolute inset-x-0 border-y-2 border-[#ffc72c]" style={{ top: ROW, height: ROW }} />
+              <div className="pointer-events-none absolute inset-x-0 border-y border-[#ffc72c]/60 bg-[#ffc72c]/[0.06]" style={{ top: ROW, height: ROW }} />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-[#121a24] to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#121a24] to-transparent" />
             </div>
-            <p className="mt-2 text-center font-[family-name:var(--font-mono)] text-[11px] tracking-[0.2em] text-[#8a94a3] uppercase">
-              {reel.label}
-            </p>
+            <p className="mt-2 text-center text-[11px] text-white/45">{reel.label}</p>
           </div>
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={spin}
-        disabled={spinning}
-        className="mt-4 w-full cursor-pointer bg-[#ffc72c] py-3.5 font-[family-name:var(--font-display)] text-2xl font-black tracking-wide text-[#0d141e] uppercase transition-colors duration-200 hover:bg-[#ffd75e] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffc72c] disabled:cursor-wait disabled:opacity-70"
-      >
-        {spinning ? "Spinning…" : "Spin"}
-      </button>
-      <p aria-live="polite" className="mt-3 min-h-[2.75rem] text-sm leading-snug text-[#c9d1dc]">
-        {result ?? "Press spin – this is how every pick starts."}
-      </p>
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={spin}
+          disabled={spinning}
+          className="shrink-0 cursor-pointer rounded-full bg-white px-5 py-2.5 text-sm font-medium whitespace-nowrap text-[#0d141e] transition-colors duration-200 hover:bg-[#ffc72c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60"
+        >
+          {spinning ? "Spinning…" : "Spin the reels"}
+        </button>
+        <p aria-live="polite" className="text-xs leading-snug text-white/60">
+          {result ?? "Try it – every pick starts here."}
+        </p>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,5 @@
-import { Big_Shoulders, DM_Mono, Inter_Tight } from "next/font/google";
+import { Inter, Instrument_Serif } from "next/font/google";
 
-// Landing page type: stadium-signage display, a tight grotesk for reading, mono for the "scoreboard".
-export const display = Big_Shoulders({ subsets: ["latin"], weight: ["700", "800", "900"], variable: "--font-display" });
-export const body = Inter_Tight({ subsets: ["latin"], variable: "--font-body" });
-export const mono = DM_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
+// Landing page type: a light grotesk, with italic serif accent words.
+export const sans = Inter({ subsets: ["latin"], weight: ["300", "400", "500", "600"], variable: "--font-sans" });
+export const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif" });

@@ -4,28 +4,30 @@ import { useActionState, useState } from "react";
 
 import { joinWaitlistAction, type WaitlistState } from "@/app/waitlist-actions";
 
-/** Email sign-up for the launch. `tone` matches the section it sits on. */
-export function WaitlistForm({ source, tone = "paper" }: { source: string; tone?: "paper" | "ink" }) {
+/** Email sign-up for the launch: a glass pill with the address and a white button. */
+export function WaitlistForm({ source, align = "left" }: { source: string; align?: "left" | "center" }) {
   const [state, action, pending] = useActionState<WaitlistState, FormData>(joinWaitlistAction, { status: "idle" });
   const [renderedAt] = useState(() => Date.now());
-  const ink = tone === "ink";
+  const center = align === "center";
 
   if (state.status === "done") {
     return (
-      <div role="status" className={`border-l-4 border-[#1f6b3a] py-1 pl-4 ${ink ? "text-[#f3efe6]" : "text-[#0d141e]"}`}>
-        <p className="font-[family-name:var(--font-display)] text-3xl font-extrabold uppercase">
-          {state.already ? "Already on the list" : "You're in"}
-        </p>
-        <p className={`mt-1 ${ink ? "text-[#c9d1dc]" : "text-[#4a5361]"}`}>
-          {state.position > 0 ? `Number ${state.position.toLocaleString("en-US")} in the queue. ` : ""}
-          One email, on launch day.
+      <div role="status" className={`flex items-center gap-3 ${center ? "justify-center text-center" : ""}`}>
+        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white text-[#0d141e]" aria-hidden>
+          <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth={2.4}>
+            <path d="M5 12l5 5 9-10" />
+          </svg>
+        </span>
+        <p className="text-left text-sm text-white/80">
+          <span className="font-medium text-white">{state.already ? "Already on the list." : "You're on the list."}</span>{" "}
+          {state.position > 0 ? `Number ${state.position.toLocaleString("en-US")} in line – ` : ""}one email on launch day.
         </p>
       </div>
     );
   }
 
   return (
-    <form action={action} noValidate className="w-full">
+    <form action={action} noValidate className={`w-full max-w-md ${center ? "mx-auto" : ""}`}>
       <input type="hidden" name="source" value={source} />
       <input type="hidden" name="t" value={renderedAt} suppressHydrationWarning />
       {/* Honeypot: hidden from people, filled by bots. */}
@@ -35,15 +37,10 @@ export function WaitlistForm({ source, tone = "paper" }: { source: string; tone?
           <input type="text" name="company" tabIndex={-1} autoComplete="off" />
         </label>
       </div>
-      <label
-        htmlFor={`email-${source}`}
-        className={`mb-2 block font-[family-name:var(--font-mono)] text-xs tracking-[0.18em] uppercase ${
-          ink ? "text-[#8a94a3]" : "text-[#4a5361]"
-        }`}
-      >
-        Email for launch day
+      <label htmlFor={`email-${source}`} className="sr-only">
+        Email address
       </label>
-      <div className="flex flex-col gap-3 sm:flex-row sm:gap-0">
+      <div className="flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.06] p-1.5 backdrop-blur-xl focus-within:border-white/30">
         <input
           id={`email-${source}`}
           name="email"
@@ -51,34 +48,24 @@ export function WaitlistForm({ source, tone = "paper" }: { source: string; tone?
           required
           autoComplete="email"
           inputMode="email"
-          placeholder="you@example.com"
+          placeholder="Enter your email"
           aria-invalid={state.status === "error"}
           aria-describedby={`note-${source}`}
-          className={`min-w-0 flex-1 border-2 px-4 py-3.5 text-lg outline-none transition-colors duration-200 ${
-            ink
-              ? "border-[#f3efe6] bg-transparent text-[#f3efe6] placeholder:text-[#6b7686] focus:border-[#ffc72c]"
-              : "border-[#0d141e] bg-white text-[#0d141e] placeholder:text-[#8a8f98] focus:border-[#1f6b3a]"
-          }`}
+          className="min-w-0 flex-1 bg-transparent px-4 py-2 text-[15px] text-white outline-none placeholder:text-white/40"
         />
         <button
           type="submit"
           disabled={pending}
-          className={`cursor-pointer border-2 px-6 py-3.5 font-[family-name:var(--font-display)] text-xl font-black tracking-wide uppercase transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-70 ${
-            ink
-              ? "border-[#ffc72c] bg-[#ffc72c] text-[#0d141e] hover:bg-[#ffd75e] focus-visible:outline-[#ffc72c]"
-              : "border-[#0d141e] bg-[#0d141e] text-[#f3efe6] hover:bg-[#1f6b3a] hover:border-[#1f6b3a] focus-visible:outline-[#0d141e]"
-          }`}
+          className="shrink-0 cursor-pointer rounded-full bg-white px-5 py-2.5 text-sm font-medium text-[#0d141e] transition-colors duration-200 hover:bg-[#ffc72c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60"
         >
-          {pending ? "Joining…" : "Join the waitlist"}
+          {pending ? "Joining…" : "Join waitlist"}
         </button>
       </div>
       <p
         id={`note-${source}`}
-        className={`mt-2.5 text-sm ${
-          state.status === "error" ? (ink ? "text-[#ffb4ab]" : "text-[#b42318]") : ink ? "text-[#8a94a3]" : "text-[#4a5361]"
-        }`}
+        className={`mt-2.5 px-4 text-xs ${state.status === "error" ? "text-[#ffb4ab]" : "text-white/40"} ${center ? "text-center" : ""}`}
       >
-        {state.status === "error" ? state.message : "No spam. We only use your address to tell you when it's out."}
+        {state.status === "error" ? state.message : "One email on launch day. No spam."}
       </p>
     </form>
   );

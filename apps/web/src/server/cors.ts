@@ -1,3 +1,4 @@
+import { enforceRateLimit } from "./rate-limit";
 import { bearerToken, sessionUserId } from "./session";
 
 // Public game API: CORS open so the Expo web build (another port) can call it, including the
@@ -50,6 +51,7 @@ export function postHandler<B, R>(route: string, work: (body: B | null, auth: Au
   return async (request: Request) => {
     try {
       const { body, auth } = await readAuthedJson<B>(request);
+      await enforceRateLimit(route, request.headers, auth.userId);
       return json(await work(body, auth));
     } catch (error) {
       if (error instanceof Error && error.name === "BadRequest") {
@@ -58,4 +60,18 @@ export function postHandler<B, R>(route: string, work: (body: B | null, auth: Au
       return failed(route, error);
     }
   };
+}
+
+/**
+ * For routes without postHandler: counts the request and returns the 429 answer when over the
+ * limit (null = go on). `userId` from the session, if the route has one.
+ */
+export async function rateLimitResponse(route: string, request: Request, userId: string | null = null) {
+  try {
+    await enforceRateLimit(route, request.headers, userId);
+    return null;
+  } catch (error) {
+    if (error instanceof Error && (error as { status?: number }).status === 429) return json({ error: error.message }, 429);
+    throw error;
+  }
 }

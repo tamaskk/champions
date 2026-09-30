@@ -1,4 +1,4 @@
-import { failed, json, preflight, readJson } from "@/server/cors";
+import { failed, json, preflight, readJson, rateLimitResponse } from "@/server/cors";
 import { legacySession } from "@/server/auth-data";
 
 export const OPTIONS = preflight;
@@ -8,6 +8,8 @@ export const OPTIONS = preflight;
  * (reads the raw body on purpose: the install has no token yet). Refused once the account has one.
  */
 export async function POST(request: Request) {
+  const limited = await rateLimitResponse("POST /api/auth/session", request, null);
+  if (limited) return limited;
   try {
     const r = await legacySession(await readJson<{ userId?: string }>(request));
     return "error" in r ? json(r, 403) : json(r);

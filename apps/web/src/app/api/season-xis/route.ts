@@ -1,3 +1,4 @@
+import { rateLimitResponse } from "@/server/cors";
 import { lastCompleteSeason, parseLeague, type SeasonXIsResponse } from "@champion/shared";
 import type { NextRequest } from "next/server";
 
@@ -8,6 +9,8 @@ const CORS = { "Access-Control-Allow-Origin": "*" };
 
 /** GET /api/season-xis?league=ENG&season=1975 – every club's likely XI that season (League simulation). */
 export async function GET(request: NextRequest) {
+  const limited = await rateLimitResponse("GET /api/season-xis", request, null);
+  if (limited) return limited;
   const params = request.nextUrl.searchParams;
   const league = parseLeague(params.get("league") ?? "");
   const season = Number(params.get("season"));

@@ -1,3 +1,4 @@
+import { rateLimitResponse } from "@/server/cors";
 import { parseLeague, slugify, type OpponentResponse } from "@champion/shared";
 import type { NextRequest } from "next/server";
 
@@ -8,6 +9,8 @@ const CORS = { "Access-Control-Allow-Origin": "*" };
 
 /** GET /api/opponent?league=GER&season=1972&club=bayern-munich – the club season's likely XI. */
 export async function GET(request: NextRequest) {
+  const limited = await rateLimitResponse("GET /api/opponent", request, null);
+  if (limited) return limited;
   const params = request.nextUrl.searchParams;
   const league = parseLeague(params.get("league") ?? "");
   const season = Number(params.get("season"));

@@ -1,4 +1,5 @@
-import { failed, json, preflight, readAuthedJson } from "@/server/cors";
+import { sessionUserId } from "@/server/session";
+import { failed, json, preflight, readAuthedJson, rateLimitResponse } from "@/server/cors";
 import { BadRequest } from "@/server/leaderboard-data";
 import { secondChance } from "@/server/play-data";
 
@@ -6,6 +7,8 @@ export const OPTIONS = preflight;
 
 /** POST /api/squads/:id/second-chance {userId, requestId} – uses a Second chance: one more tournament for this squad. */
 export async function POST(request: Request, { params }: RouteContext<"/api/squads/[id]/second-chance">) {
+  const limited = await rateLimitResponse("POST /api/squads/:id/second-chance", request, await sessionUserId(request));
+  if (limited) return limited;
   try {
     const { body } = await readAuthedJson<never>(request);
     return json(await secondChance((await params).id, body));

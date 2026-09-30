@@ -1,3 +1,4 @@
+import { rateLimitResponse } from "@/server/cors";
 import { DECADES, parseLeague, type ClubsResponse } from "@champion/shared";
 import type { NextRequest } from "next/server";
 
@@ -7,6 +8,8 @@ import { clubsInDecade } from "@/server/club-data";
 const CORS = { "Access-Control-Allow-Origin": "*" };
 
 export async function GET(request: NextRequest) {
+  const limited = await rateLimitResponse("GET /api/clubs", request, null);
+  if (limited) return limited;
   const params = request.nextUrl.searchParams;
   const league = parseLeague(params.get("league") ?? "");
   const decade = Number(params.get("decade"));

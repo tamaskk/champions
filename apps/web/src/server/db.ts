@@ -113,6 +113,9 @@ export type H2HTicketDoc = {
 };
 
 // Reuse one client across hot reloads in dev and across invocations on Vercel.
+/** One rate-limit counter: requests of a key (route + IP or user) in one time window. */
+export type RateLimitDoc = { _id: string; count: number; expiresAt: Date };
+
 /** A signed-in device: the hash of its bearer token (the token itself never touches the database). */
 export type SessionDoc = {
   tokenHash: string;
@@ -185,6 +188,8 @@ async function connect(uri: string): Promise<Db> {
     { key: { userId: 1, key: 1 }, unique: true },
     { key: { userId: 1, source: 1, createdAt: -1 } },
   ]);
+  // Counters delete themselves once their window is over.
+  await db.collection<RateLimitDoc>("rateLimits").createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
   await db.collection<SessionDoc>("sessions").createIndexes([
     { key: { tokenHash: 1 }, unique: true },
     { key: { userId: 1 } },
@@ -245,6 +250,10 @@ export async function wallets(): Promise<Collection<WalletDoc>> {
 
 export async function coinLedger(): Promise<Collection<LedgerDoc>> {
   return (await getDb()).collection<LedgerDoc>("coinLedger");
+}
+
+export async function rateLimits(): Promise<Collection<RateLimitDoc>> {
+  return (await getDb()).collection<RateLimitDoc>("rateLimits");
 }
 
 export async function sessions(): Promise<Collection<SessionDoc>> {

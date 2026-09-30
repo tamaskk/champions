@@ -1,3 +1,4 @@
+import { rateLimitResponse } from "@/server/cors";
 import { slugify, type PlayerCareer } from "@champion/shared";
 import type { NextRequest } from "next/server";
 
@@ -7,6 +8,8 @@ import { playerCareer } from "@/server/squad-data";
 const CORS = { "Access-Control-Allow-Origin": "*" };
 
 export async function GET(request: NextRequest) {
+  const limited = await rateLimitResponse("GET /api/player", request, null);
+  if (limited) return limited;
   const params = request.nextUrl.searchParams;
   const tm = Number(params.get("tm"));
   const nameSlug = slugify(params.get("name") ?? "");

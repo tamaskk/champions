@@ -1,3 +1,4 @@
+import { rateLimitResponse } from "@/server/cors";
 import { lastCompleteSeason, type CupFieldResponse } from "@champion/shared";
 import type { NextRequest } from "next/server";
 
@@ -8,6 +9,8 @@ const CORS = { "Access-Control-Allow-Origin": "*" };
 
 /** GET /api/cl-field?season=2008 – the Champions League field of a season (31 clubs + your XI). */
 export async function GET(request: NextRequest) {
+  const limited = await rateLimitResponse("GET /api/cl-field", request, null);
+  if (limited) return limited;
   const season = Number(request.nextUrl.searchParams.get("season"));
   if (!Number.isInteger(season) || season < 1960 || season > lastCompleteSeason()) {
     return Response.json({ error: `Expected ?season=<1960…${lastCompleteSeason()}>` }, { status: 400, headers: CORS });

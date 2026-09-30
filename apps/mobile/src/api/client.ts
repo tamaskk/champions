@@ -165,7 +165,10 @@ async function postJSONMessage<T>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
-  if (!res.ok || !data) throw new Error(res.status === 400 && data?.error ? data.error : 'No connection to the server');
+  if (!res.ok || !data) {
+    const readable = [400, 401, 403, 429].includes(res.status) && data?.error;
+    throw new Error(readable ? data.error : 'No connection to the server');
+  }
   return data;
 }
 

@@ -1,3 +1,4 @@
+import { rateLimitResponse } from "@/server/cors";
 import { lastCompleteSeason, parseLeague, type LeagueTableResponse } from "@champion/shared";
 import type { NextRequest } from "next/server";
 
@@ -8,6 +9,8 @@ const CORS = { "Access-Control-Allow-Origin": "*" };
 
 /** GET /api/table?league=ENG&season=1975 – final table. ?random=1 – a random completed league season. */
 export async function GET(request: NextRequest) {
+  const limited = await rateLimitResponse("GET /api/table", request, null);
+  if (limited) return limited;
   const params = request.nextUrl.searchParams;
   try {
     let league = parseLeague(params.get("league") ?? "");

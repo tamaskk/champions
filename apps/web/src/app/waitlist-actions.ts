@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 
+import { enforceRateLimit } from "@/server/rate-limit";
 import { joinWaitlist } from "@/server/waitlist-data";
 
 export type WaitlistState =
@@ -22,6 +23,11 @@ export async function joinWaitlistAction(_prev: WaitlistState, formData: FormDat
   if (typeof email !== "string" || !email.trim()) return { status: "error", message: "Enter your email address." };
   if (!Number.isFinite(renderedAt) || Date.now() - renderedAt < MIN_FILL_MS) {
     return { status: "error", message: "Please try again in a moment." };
+  }
+  try {
+    await enforceRateLimit("waitlist", await headers(), null);
+  } catch (error) {
+    return { status: "error", message: error instanceof Error ? error.message : "Too many sign-ups – try again later." };
   }
   try {
     const locale = (await headers()).get("accept-language")?.split(",")[0] ?? null;

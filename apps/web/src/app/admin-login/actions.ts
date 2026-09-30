@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -9,6 +9,7 @@ import {
   checkAdminCredentials,
   createAdminSession,
 } from "@/server/admin-auth";
+import { enforceRateLimit } from "@/server/rate-limit";
 
 export type LoginState = { error: string | null };
 
@@ -18,6 +19,12 @@ const safeNext = (next: unknown) =>
 
 export async function adminLogin(_prev: LoginState, formData: FormData): Promise<LoginState> {
   if (!adminConfigured()) return { error: "Admin login is not set up: add ADMIN_USER and ADMIN_PASSWORD to .env" };
+  // At most 10 tries per IP every 15 minutes (the password can't be guessed by brute force).
+  try {
+    await enforceRateLimit("admin-login", await headers(), null);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Too many attempts" };
+  }
   const user = String(formData.get("user") ?? "");
   const password = String(formData.get("password") ?? "");
   if (!checkAdminCredentials(user, password)) {

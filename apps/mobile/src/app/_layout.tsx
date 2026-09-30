@@ -10,6 +10,7 @@ import AppTabs from '@/components/app-tabs';
 import { ProgressToast } from '@/components/progress-toast';
 import { C, FONT_ASSETS } from '@/design/tokens';
 import { startAnalytics } from '@/game/analytics';
+import { startPush } from '@/game/push';
 import { initWallet } from '@/game/wallet';
 
 SplashScreen.preventAutoHideAsync();
@@ -25,6 +26,7 @@ export default function TabLayout() {
   useEffect(() => {
     void initWallet();
     startAnalytics();
+    startPush();
   }, []);
   return (
     <ThemeProvider value={THEME}>

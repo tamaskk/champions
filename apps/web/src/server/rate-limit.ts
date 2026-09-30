@@ -51,6 +51,7 @@ export const RATE_RULES: Record<string, Rule> = {
   "POST /api/auth/password": { user: { limit: 10, windowSec: HOUR } },
   "POST /api/auth/delete": { user: { limit: 10, windowSec: HOUR } },
   "POST /api/auth/recovery": { user: { limit: 10, windowSec: HOUR } },
+  "POST /api/push/register": { user: { limit: 30, windowSec: HOUR } },
 };
 
 /** Any other route: plenty for a real player, a wall for a script. */

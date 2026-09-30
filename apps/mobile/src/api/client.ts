@@ -321,3 +321,7 @@ async function postAnonymous(path: string, body: unknown): Promise<void> {
 
 export const sendEvents = (body: EventsRequest) => postAnonymous('/api/events', body);
 export const sendCrash = (body: CrashReport) => postAnonymous('/api/crashes', body);
+
+/** Push token for "your XI was beaten" (null: none; the server then sends nothing). */
+export const registerPush = (body: { token: string | null; beaten: boolean }) =>
+  postJSON<{ ok: true }>('/api/push/register', body);

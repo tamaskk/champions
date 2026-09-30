@@ -55,6 +55,10 @@ export type UserDoc = {
   resetExpires?: Date | null;
   resetAttempts?: number;
   resetSentAt?: Date | null;
+  /** Expo push token of the player's device, for "your XI was beaten" (null: off). */
+  pushToken?: string | null;
+  /** UTC day of the last "beaten" push (at most one a day). */
+  beatenPushDay?: string | null;
 };
 
 /** Coins and what they bought. Balance only changes together with a ledger entry (transaction). */

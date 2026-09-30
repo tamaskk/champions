@@ -48,6 +48,7 @@ const DEVICE_FILES = [
   'install',
   'events-pending',
   'crash-pending',
+  'push',
 ];
 
 /** Erases the game's data on this device; the app starts fresh on its next launch. */

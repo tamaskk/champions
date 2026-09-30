@@ -16,6 +16,7 @@ import { ObjectId, type WithId } from "mongodb";
 import { h2hTickets, savedSquads, type H2HTicketDoc, type SavedSquadDoc } from "./db";
 import { BadRequest, userOf } from "./leaderboard-data";
 import { claimPlay, ownSquad, storeResult, yourSide } from "./play-data";
+import { notifyBeaten } from "./push-data";
 
 const oid = (id: string) => (ObjectId.isValid(id) ? new ObjectId(id) : null);
 const waitLimit = () => new Date(Date.now() - H2H_WAIT_SECONDS * 1000);
@@ -162,6 +163,9 @@ export async function h2hGhost(id: string, userId: string | null): Promise<H2HTi
   };
   const views = play(ticket.side, ghost, [id, id], true);
   await col.updateOne({ _id }, { $set: { match: views.a } });
+  const yours = views.a.youAtHome ? views.a.result.homeGoals : views.a.result.awayGoals;
+  const theirs = views.a.youAtHome ? views.a.result.awayGoals : views.a.result.homeGoals;
+  if (yours > theirs) notifyBeaten(squad.userId, userId, ticket.side.username, `${yours}–${theirs}`);
   await recordResult(ticket.squadId, views.a);
   return views.a;
 }

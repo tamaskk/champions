@@ -67,6 +67,12 @@ export default function PrivacyPage() {
           improving the game and keeping it stable (Art. 6(1)(f)).
         </p>
         <p>
+          <strong>Notifications (optional).</strong> If you turn on &ldquo;When your XI is beaten&rdquo;, we store your
+          device&apos;s push token with your account and send at most one such notification a day through Expo&apos;s push
+          service; turning the switch off deletes the token. The Daily reminder is scheduled on your device and sends us
+          nothing. Basis: your consent (Art. 6(1)(a)).
+        </p>
+        <p>
           <strong>On your device.</strong> The app keeps your progress, settings, records and drafts in progress in its
           own storage on your device. It does not read other data on your phone.
         </p>
@@ -86,6 +92,7 @@ export default function PrivacyPage() {
           <li>Vercel Inc. – hosting of this website and the game&apos;s server.</li>
           <li>MongoDB Inc. (Atlas) – database, region: {OPERATOR.databaseRegion}.</li>
           <li>Resend – sending password-reset emails.</li>
+          <li>Expo (650 Industries, Inc.) – delivering push notifications, if you turn them on.</li>
           <li>Apple, Google and RevenueCat – in-app purchases, once available.</li>
         </ul>
         <p>

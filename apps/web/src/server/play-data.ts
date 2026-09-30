@@ -40,6 +40,7 @@ import { dailyChallenge } from "./daily-data";
 import { dailyScores, miniLeagues, savedSquads, type SavedSquadDoc } from "./db";
 import { BadRequest, userOf, verifySquad } from "./leaderboard-data";
 import { legendXI } from "./legends-data";
+import { notifyBeaten } from "./push-data";
 import { cupField, opponentXI, seasonXIs } from "./match-data";
 import { leagueTable } from "./table-data";
 import { consumeItem } from "./wallet-data";
@@ -102,7 +103,7 @@ export async function playTournament(squadId: string, body: PlayRequest | null):
   await claimPlay(doc._id);
   try {
     const you = await yourSide(doc, teamName);
-    const response = await simulate(body, you);
+    const response = await simulate(body, you, { userId: user.userId, username: user.username });
     await storeResult(doc._id, response.report);
     return response;
   } catch (error) {
@@ -111,7 +112,7 @@ export async function playTournament(squadId: string, body: PlayRequest | null):
   }
 }
 
-async function simulate(body: PlayRequest, you: MatchSide): Promise<PlayResponse> {
+async function simulate(body: PlayRequest, you: MatchSide, player: { userId: string; username: string }): Promise<PlayResponse> {
   switch (body.mode) {
     case "match": {
       if (!isLeague(body.league)) throw new BadRequest("league");
@@ -125,6 +126,8 @@ async function simulate(body: PlayRequest, you: MatchSide): Promise<PlayResponse
       const opp = _id ? await (await savedSquads()).findOne({ _id }) : null;
       if (!opp) throw new BadRequest("That squad doesn't exist");
       const played = playMatch(you, savedSquadSide(opp));
+      const { yours, theirs, outcome } = scoreOf(played);
+      if (outcome === "win") notifyBeaten(opp.userId, player.userId, player.username, `${yours}–${theirs}`);
       return { mode: "challenge", played, report: matchReport(played, `Challenge vs @${opp.username}`) };
     }
     case "legend": {

@@ -20,6 +20,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, Glow, SHADOW_SM } from '@/design/ui';
+import { ReminderOffer } from '@/components/notification-settings';
 import { playOnline, type ResultReport } from '@/game/online';
 import { finishDailyAttempt } from '@/game/daily';
 import { shareText } from '@/game/share';
@@ -211,6 +212,7 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
               {share}
             </Txt>
           </View>
+          {!practice && <ReminderOffer />}
           <View style={styles.row}>
             <Btn kind="dark" icon="sports_soccer" label="Home" onPress={onHome} style={styles.flex} />
             <Btn

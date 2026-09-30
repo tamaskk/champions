@@ -130,10 +130,16 @@ export function CupTournament({
   const byId = useMemo(() => new Map((teams ?? []).map((t) => [t.id, t])), [teams]);
   const name = (id: string) => (id === YOUR_ID ? teamName() : (byId.get(id)?.name ?? '?'));
 
-  const [result, setResult] = useState<CupResult | null>(null);
+  // Result, tab and error belong to the season's field they were made for; another field starts
+  // clean – derived, so nothing is reset in an effect.
+  const fieldKey = field ? String(field.season) : '';
+  const [played, setPlayed] = useState<{ key: string; result: CupResult } | null>(null);
+  const result = played?.key === fieldKey ? played.result : null;
   const [view, setView] = useState<View3>('path');
   // null = fine; 'loading'; or the error to show.
-  const [simError, setSimError] = useState<string | null>(null);
+  const [simErrorFor, setSimErrorFor] = useState<{ key: string; message: string } | null>(null);
+  const simError = simErrorFor?.key === fieldKey ? simErrorFor.message : null;
+  const setSimError = (message: string | null) => setSimErrorFor(message ? { key: fieldKey, message } : null);
   const [serverInsight, setServerInsight] = useState<SquadInsight | null>(null);
   // The "why": your lines against the clubs you actually played.
   const why = useMemo(() => {
@@ -151,12 +157,6 @@ export function CupTournament({
       matches: mine.length,
     };
   }, [result, byId, serverInsight]);
-  useEffect(() => {
-    setResult(null);
-    setView('path');
-    setSimError(null);
-  }, [field]);
-
   // Played on the server with the saved squad (same field of clubs); the result is stored there.
   const simulate = async () => {
     if (!teams || !field || simError === 'loading') return;
@@ -165,7 +165,8 @@ export function CupTournament({
       const r = await playOnline({ mode: 'cup', season: field.season });
       if (r.mode !== 'cup') throw new Error('Unexpected answer from the server');
       setServerInsight(r.insight);
-      setResult(r.result);
+      setPlayed({ key: fieldKey, result: r.result });
+      setView('path');
       onResult?.(r.report);
       onFinished();
       setSimError(null);

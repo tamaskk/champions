@@ -55,8 +55,10 @@ export function LegendsTournament({
   const [picked, setPicked] = useState<Legend | null>(null);
   const [format, setFormat] = useState<Format>('single');
   const [locked, setLocked] = useState(false);
-  const [xi, setXI] = useState<LegendResponse | null>(null);
-  const [missing, setMissing] = useState(false);
+  // The picked legend's XI (or that it's missing), kept with the legend it belongs to.
+  const [loadedXI, setLoadedXI] = useState<{ id: string; xi: LegendResponse | null } | null>(null);
+  const xi = picked && loadedXI?.id === picked.id ? loadedXI.xi : null;
+  const missing = !!picked && loadedXI?.id === picked.id && loadedXI.xi === null;
   const [tie, setTie] = useState<Tie | null>(null);
 
   useEffect(() => {
@@ -66,13 +68,12 @@ export function LegendsTournament({
   }, []);
 
   useEffect(() => {
-    setXI(null);
-    setMissing(false);
     if (!picked) return;
     let live = true;
-    fetchLegend(picked.id)
-      .then((r) => live && setXI(r))
-      .catch(() => live && setMissing(true));
+    const id = picked.id;
+    fetchLegend(id)
+      .then((r) => live && setLoadedXI({ id, xi: r }))
+      .catch(() => live && setLoadedXI({ id, xi: null }));
     return () => {
       live = false;
     };

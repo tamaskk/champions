@@ -105,19 +105,22 @@ export function DraftSpin({
   squad,
 }: Props) {
   const insets = useSafeAreaInsets();
+  // Plain values as dependencies (not rules?.x), so the React Compiler can keep this memoized.
+  const allowedDecades = rules?.decades;
+  const allowedLeagues = rules?.leagues;
   const decadeItems = useMemo(
     () =>
-      rules?.decades?.length
-        ? DECADES.filter((d) => rules.decades!.includes(d)).map((d) => `${decadeLabel(d)}s`)
+      allowedDecades?.length
+        ? DECADES.filter((d) => allowedDecades.includes(d)).map((d) => `${decadeLabel(d)}s`)
         : DECADE_ITEMS,
-    [rules?.decades],
+    [allowedDecades],
   );
   const leagueItems = useMemo(
     () =>
-      rules?.leagues?.length
-        ? LEAGUES.filter((l) => rules.leagues!.includes(l)).map((l) => LEAGUE_ADJECTIVES[l])
+      allowedLeagues?.length
+        ? LEAGUES.filter((l) => allowedLeagues.includes(l)).map((l) => LEAGUE_ADJECTIVES[l])
         : LEAGUE_ITEMS,
-    [rules?.leagues],
+    [allowedLeagues],
   );
   const respinsLeft = rules?.respinsLeft ?? null;
   const canPick = (p: DraftPlayer) =>

@@ -1,4 +1,5 @@
 import { MAX_LEVEL, STORE_CRESTS, STORE_KITS } from '@champion/shared';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
 import { Btn, Chip, Glow, SHADOW_SM, ScreenHeader, SectionTitle } from '@/design/ui';
+import { webPageUrl } from '@/api/client';
 import { AccountCard } from '@/components/account-card';
 import { Shop } from '@/components/shop';
 import { TeamCrest } from '@/components/team-crest';
@@ -445,6 +447,28 @@ export default function ProfileScreen() {
             )}
           </View>
         </View>
+
+        {/* Help & legal (opens the website pages in an in-app browser) */}
+        <View style={styles.legalRow}>
+          {(
+            [
+              ['/support', 'Support'],
+              ['/privacy', 'Privacy Policy'],
+              ['/terms', 'Terms of Use'],
+            ] as const
+          ).map(([path, label]) => (
+            <Pressable
+              key={path}
+              onPress={() => void WebBrowser.openBrowserAsync(webPageUrl(path))}
+              accessibilityRole="link"
+              hitSlop={6}
+              style={({ pressed }) => pressed && { opacity: 0.6 }}>
+              <Txt v="cap" color={C.textMuted} style={{ textDecorationLine: 'underline' }}>
+                {label}
+              </Txt>
+            </Pressable>
+          ))}
+        </View>
       </ScrollView>
       {showShop && <Shop onClose={() => setShowShop(false)} />}
     </View>
@@ -452,6 +476,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  legalRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingTop: 4 },
   screen: { flex: 1, backgroundColor: C.bg },
   content: { paddingHorizontal: 16, gap: 24 },
   flex: { flex: 1 },

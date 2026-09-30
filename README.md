@@ -238,7 +238,7 @@ The draft and every tournament are full-screen flows started from Home
 
 ## The web app: admin and API
 
-`apps/web` is the **launch landing page** (`/`: what the game is, and a waitlist sign-up stored in `waitlist`), the **admin panel** and the **backend** of the app.
+`apps/web` is the **launch landing page** (plus `/privacy`, `/terms`, `/support` – operator details in `src/content/operator.ts`) (`/`: what the game is, and a waitlist sign-up stored in `waitlist`), the **admin panel** and the **backend** of the app.
 
 **Admin** (`/admin`, login at `/admin-login` with the credentials from `.env`; 12-hour session): dashboard with coverage per league and decade, clubs (sortable,
 paginated, squad size per club season), players (filter by league, decade, position, nationality;

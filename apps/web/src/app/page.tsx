@@ -474,7 +474,7 @@ function Footer() {
             <WaitlistForm source="footer" />
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-6 text-sm">
+        <div className="grid grid-cols-3 gap-6 text-sm">
           <div>
             <p className="text-white/85">Game</p>
             <ul className="mt-3 space-y-2 text-white/50">
@@ -503,6 +503,26 @@ function Footer() {
               <li>
                 <a href="#join" className="hover:text-white">
                   Join the waitlist
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-white/85">Legal</p>
+            <ul className="mt-3 space-y-2 text-white/50">
+              <li>
+                <a href="/privacy" className="hover:text-white">
+                  Privacy
+                </a>
+              </li>
+              <li>
+                <a href="/terms" className="hover:text-white">
+                  Terms
+                </a>
+              </li>
+              <li>
+                <a href="/support" className="hover:text-white">
+                  Support
                 </a>
               </li>
             </ul>

@@ -232,6 +232,8 @@ export async function fetchPlayerCareer(player: { tmId?: number | null; name: st
 
 /** Public web page of a saved squad (the share link; it opens the XI and the app to challenge it). */
 export const squadShareUrl = (id: string) => `${apiBaseUrl()}/s/${id}`;
+/** A page of the website (privacy policy, terms, support). */
+export const webPageUrl = (path: '/privacy' | '/terms' | '/support') => `${apiBaseUrl()}${path}`;
 
 // ---- Wallet (coins live on the server; see apps/web/src/server/wallet-data.ts)
 

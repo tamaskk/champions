@@ -210,9 +210,14 @@ utána a monetizáció.
    Kivéve a katalógusból: Reel lock (a mi re-spin szabályainknál nincs értelme: a liga újrapörgetése
    mindig a klubot is viszi) és Immortals korai feloldás (a legendák nincsenek szinthez zárva).
    Kozmetika kész: gólöröm („Fireworks”). „Soon”: stadionhang-csomag (hangfájlok kellenek).
-4. ✅ Meghívás (kód, 300–300 coin, csak az első 7 napban). ⚠️ Rewarded reklám csak szimulálva
-   (fejlesztői módban): élesben kell egy reklámhálózat (pl. AdMob) szerver oldali visszaigazolással
-   (SSV), és `ADS_SIMULATED` nélkül a szerver nem fizet érte.
+4. ✅ Meghívás (kód, 300–300 coin, csak az első 7 napban). ✅ Reklám: Google AdMob
+   (`apps/mobile/src/game/ads.ts`, részletek: `docs/ads.md`).
+   - Rewarded (Shop → Watch & earn): a coint a szerver adja az AdMob aláírt SSV-hívására
+     (`/api/ads/ticket` + `/api/ads/ssv`); `ADS_SIMULATED` élesben nincs beállítva.
+   - **Interstitial minden befejezett torna után** – a tulajdonos döntése, 2026-09-30 (felülírja a
+     korábbi „csak rewarded, nincs kényszerreklám” elvet). Kivétel: Daily, Club-tagok („no ads”
+     ígéret), draft és meccs közben soha; két reklám között legalább 30 mp. Élő ad unit ID-k:
+     `INTERSTITIAL_UNITS` (amíg üres, élesben nincs interstitial).
 5. ⚠️ Részben: RevenueCat webhook kész (`/api/iap/revenuecat`, `REVENUECAT_WEBHOOK_AUTH`),
    coin-csomagok, starter pack, Season Pass és Spinvincible Club jóváírása. Hiányzik: a
    `react-native-purchases` SDK (Expo dev build kell), a termékek felvétele az App Store /

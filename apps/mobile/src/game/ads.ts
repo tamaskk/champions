@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 import { adTicket } from '@/api/client';
 
-import { claim, refreshWallet } from './wallet';
+import { claim, isClubMember, refreshWallet } from './wallet';
 
 /**
  * Rewarded ads (Google AdMob, react-native-google-mobile-ads).
@@ -26,6 +26,15 @@ const UNITS = {
   ios: 'ca-app-pub-8452423089974780/8781769841',
   android: 'ca-app-pub-8452423089974780/8590198157',
 } as const;
+/** Interstitial after a finished tournament. Empty until the AdMob units exist (live builds then show none). */
+const INTERSTITIAL_UNITS: { ios: string; android: string } = {
+  ios: '',
+  android: '',
+};
+/** At least this long between two interstitials. */
+const INTERSTITIAL_GAP_MS = 30_000;
+/** Shown a moment after the result, so the player sees it first. */
+const INTERSTITIAL_DELAY_MS = 1200;
 
 type Sdk = typeof import('react-native-google-mobile-ads');
 
@@ -81,6 +90,7 @@ export function startAds(): Promise<void> {
       await sdk.default().setRequestConfiguration({ maxAdContentRating: sdk.MaxAdContentRating.T });
       await sdk.default().initialize();
       set({ ready: true, privacyOptions });
+      preloadInterstitial();
     } catch {
       // Offline or the consent service failed: tried again on the next start.
       starting = null;
@@ -161,4 +171,55 @@ async function collectPaid() {
     const w = await refreshWallet();
     if (w && w.adsToday > before) return;
   }
+}
+
+// ---- Interstitial after a finished tournament (match, league season, cup, legends, challenge,
+// head-to-head). Never in the Daily, never for Club members (their perk is no ads).
+
+type Interstitial = ReturnType<Sdk['InterstitialAd']['createForAdRequest']>;
+let interstitial: { ad: Interstitial; loaded: boolean } | null = null;
+let lastInterstitial = 0;
+
+function interstitialUnit(): string | null {
+  if (!sdk) return null;
+  if (!LIVE) return sdk.TestIds.INTERSTITIAL;
+  return INTERSTITIAL_UNITS[Platform.OS === 'ios' ? 'ios' : 'android'] || null;
+}
+
+function preloadInterstitial() {
+  const unit = interstitialUnit();
+  if (!sdk || !unit || !state.ready || interstitial) return;
+  const ad = sdk.InterstitialAd.createForAdRequest(unit);
+  const slot = { ad, loaded: false };
+  interstitial = slot;
+  ad.addAdEventListener(sdk.AdEventType.LOADED, () => {
+    slot.loaded = true;
+  });
+  ad.addAdEventListener(sdk.AdEventType.ERROR, () => {
+    // No fill / offline: try again on the next finished tournament.
+    if (interstitial === slot) interstitial = null;
+  });
+  ad.addAdEventListener(sdk.AdEventType.CLOSED, () => {
+    if (interstitial === slot) interstitial = null;
+    preloadInterstitial();
+  });
+  ad.load();
+}
+
+/** Call when a tournament has been played to the end. Shows the preloaded ad if there is one. */
+export function showInterstitialAfterGame() {
+  if (!sdk || !state.ready || isClubMember()) return;
+  if (Date.now() - lastInterstitial < INTERSTITIAL_GAP_MS) return;
+  const slot = interstitial;
+  if (!slot?.loaded) {
+    preloadInterstitial();
+    return;
+  }
+  lastInterstitial = Date.now();
+  setTimeout(() => {
+    slot.ad.show().catch(() => {
+      if (interstitial === slot) interstitial = null;
+      preloadInterstitial();
+    });
+  }, INTERSTITIAL_DELAY_MS);
 }

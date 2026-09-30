@@ -48,6 +48,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
 import { Btn, Chip, SHADOW_SM, ScreenHeader } from '@/design/ui';
+import { showInterstitialAfterGame } from '@/game/ads';
 import { track } from '@/game/analytics';
 import { autofillBench, autofillLineup } from '@/game/autofill';
 import { consumeItem, useWallet } from '@/game/wallet';
@@ -480,6 +481,13 @@ export default function HomeScreen() {
   };
 
   // Leaving a finished tournament: with a Second chance in the wallet, offer one more first.
+  // A tournament was played to the end: its result is shown, then an interstitial (not in the
+  // Daily, which has its own result screen; not for Club members).
+  const tournamentOver = () => {
+    setFinished(true);
+    showInterstitialAfterGame();
+  };
+
   const endTournament = () => {
     if (!daily && secondChances > 0) setOfferSecondChance(true);
     else closeGame();
@@ -1160,7 +1168,7 @@ export default function HomeScreen() {
                 ? undefined
                 : (m) => setTournament(m === 'match' ? 'match' : m === 'cup' ? 'champions-league' : 'league')
             }
-            onFinished={() => setFinished(true)}
+            onFinished={tournamentOver}
             onNewGame={() => {
               closeGame();
               startGame();
@@ -1183,7 +1191,7 @@ export default function HomeScreen() {
                 ? undefined
                 : (m) => setTournament(m === 'match' ? 'match' : m === 'cup' ? 'champions-league' : 'league')
             }
-            onFinished={() => setFinished(true)}
+            onFinished={tournamentOver}
             onNewGame={() => {
               closeGame();
               startGame();
@@ -1204,7 +1212,7 @@ export default function HomeScreen() {
                 ? undefined
                 : (m) => setTournament(m === 'match' ? 'match' : m === 'cup' ? 'champions-league' : 'league')
             }
-            onFinished={() => setFinished(true)}
+            onFinished={tournamentOver}
             onNewGame={() => {
               closeGame();
               startGame();
@@ -1219,7 +1227,7 @@ export default function HomeScreen() {
             overall={overall}
             chemistry={chemistry?.team ?? 0}
             onBack={() => (finished ? endTournament() : setTournament(null))}
-            onFinished={() => setFinished(true)}
+            onFinished={tournamentOver}
             onNewGame={() => {
               closeGame();
               startGame();
@@ -1235,7 +1243,7 @@ export default function HomeScreen() {
             overall={overall}
             chemistry={chemistry?.team ?? 0}
             onBack={() => (finished ? endTournament() : setTournament(null))}
-            onFinished={() => setFinished(true)}
+            onFinished={tournamentOver}
             onNewGame={() => {
               closeGame();
               startGame();
@@ -1250,7 +1258,7 @@ export default function HomeScreen() {
             overall={overall}
             chemistry={chemistry?.team ?? 0}
             onBack={() => (finished ? endTournament() : setTournament(null))}
-            onFinished={() => setFinished(true)}
+            onFinished={tournamentOver}
             onNewGame={() => {
               closeGame();
               startGame();

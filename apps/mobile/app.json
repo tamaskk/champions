@@ -71,7 +71,6 @@
           "color": "#0d141e"
         }
       ],
-      "expo-tracking-transparency",
       [
         "react-native-google-mobile-ads",
         {

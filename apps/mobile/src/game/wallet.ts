@@ -131,6 +131,12 @@ export async function consumeItem(itemId: string): Promise<boolean> {
   }
 }
 
+/** Spinvincible Club is active (its perks include no ads). */
+export const isClubMember = () => {
+  const until = state.wallet?.entitlements.clubUntil;
+  return !!until && new Date(until) > new Date();
+};
+
 export const itemCount = (itemId: string) => state.wallet?.consumables[itemId] ?? 0;
 
 export async function redeemInvite(code: string): Promise<SpendResult> {

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { DISCLAIMER } from "@champion/shared";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { STORE_LINKS } from "@/content/stores";
 import { squadDetail } from "@/server/leaderboard-data";
 
 type Props = { params: Promise<{ id: string }> };
@@ -22,6 +24,12 @@ export default async function SharedSquadPage({ params }: Props) {
   const { id } = await params;
   const squad = await squadDetail(id).catch(() => null);
   if (!squad) notFound();
+  const stores = (
+    [
+      ["App Store", STORE_LINKS.appStore],
+      ["Google Play", STORE_LINKS.playStore],
+    ] satisfies [string, string | null][]
+  ).flatMap(([label, href]) => (href ? [[label, href] as const] : []));
 
   return (
     <main className="min-h-screen bg-[#0d141e] px-4 py-10 text-[#dce3f1]">
@@ -79,18 +87,41 @@ export default async function SharedSquadPage({ params }: Props) {
           </ul>
         </section>
 
-        <a
-          href={`spinvincible://ranks?challenge=${squad.id}`}
-          className="rounded-2xl bg-[#3093f8] py-4 text-center font-bold text-[#002b52]"
-        >
-          Challenge this XI in the app
-        </a>
-        <a
-          href={`spinvincible://ranks?squad=${squad.id}`}
-          className="rounded-2xl bg-[#232a35] py-3 text-center font-semibold"
-        >
-          Open in Spinvincible
-        </a>
+        {stores.length > 0 ? (
+          <section className="flex flex-col gap-2">
+            <p className="text-center text-sm font-semibold">Get Spinvincible and challenge this XI</p>
+            <div className="grid grid-cols-2 gap-2">
+              {stores.map(([label, href]) => (
+                <a
+                  key={label}
+                  href={href}
+                  className="rounded-2xl bg-[#3093f8] py-3 text-center font-bold text-[#002b52]"
+                >
+                  {label}
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <Link href="/#join" className="rounded-2xl bg-[#3093f8] py-4 text-center font-bold text-[#002b52]">
+            Not in the stores yet – join the waitlist
+          </Link>
+        )}
+        {/* Custom-scheme links only work with the app installed: offered as the secondary path. */}
+        <div className="rounded-2xl bg-[#151c26] p-4 text-center">
+          <p className="text-xs text-[#bdcabe]">Already have the app?</p>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+            <a
+              href={`spinvincible://ranks?challenge=${squad.id}`}
+              className="rounded-xl bg-[#232a35] py-2.5 font-semibold"
+            >
+              Challenge this XI
+            </a>
+            <a href={`spinvincible://ranks?squad=${squad.id}`} className="rounded-xl bg-[#232a35] py-2.5 font-semibold">
+              Open in app
+            </a>
+          </div>
+        </div>
         <p className="text-center text-xs text-[#879489]">
           Draft your own XI from 60 years of European football – then play against this one.
         </p>

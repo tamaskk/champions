@@ -110,7 +110,9 @@ export default function HomeScreen() {
   const pitchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Daily challenge: its rules, the day's seeded reels and the re-spins used.
   const [daily, setDaily] = useState<DailyResponse | null>(null);
-  const dailyRandom = useRef<(() => number) | null>(null);
+  // The Daily's seeded reels (read while rendering, so state – not a ref). The function keeps its own
+  // position in the seed, so it is set once per draft and never replaced mid-draft.
+  const [dailyRandom, setDailyRandom] = useState<(() => number) | null>(null);
   // How many seeded reel draws the Daily has used (saved with the draft, to continue it exactly).
   const dailyCalls = useRef<(() => number) | null>(null);
   const [respinsUsed, setRespinsUsed] = useState(0);
@@ -240,7 +242,7 @@ export default function HomeScreen() {
     // was: same squad, same re-spins, the reels rewound to the same draw.
     const saved = d && !practiceTry ? loadDailyDraft(d.date, d.challenge.id) : null;
     const reels = d ? dailyReels(`${d.date}|${d.challenge.id}`, saved?.randomCalls ?? 0) : null;
-    dailyRandom.current = reels?.random ?? null;
+    setDailyRandom(() => reels?.random ?? null);
     dailyCalls.current = reels?.calls ?? null;
     if (d && !practiceTry) startDailyAttempt(d.date, d.challenge.title);
     if (saved) {
@@ -305,7 +307,7 @@ export default function HomeScreen() {
     setSquadId(null);
     setFinished(false);
     setDaily(null);
-    dailyRandom.current = null;
+    setDailyRandom(null);
     dailyCalls.current = null;
     setRespinsUsed(0);
     setBench(EMPTY_BENCH);
@@ -433,7 +435,7 @@ export default function HomeScreen() {
     ? {
         decades: daily.challenge.rules.decades,
         leagues: daily.challenge.rules.leagues,
-        random: dailyRandom.current ?? undefined,
+        random: dailyRandom ?? undefined,
         respinsLeft:
           daily.challenge.rules.maxRespins === undefined
             ? null
@@ -630,7 +632,7 @@ export default function HomeScreen() {
                 rowHeight={56}
                 visibleRows={5}
                 fontSize={26}
-                random={dailyRandom.current ?? undefined}
+                random={dailyRandom ?? undefined}
                 stopAnywhere={!daily}
                 onResult={handleResult}
               />

@@ -2,8 +2,10 @@ import { DAILY_POOL, dailyForDate, dailyRulesLine, todayKey, type DailyChallenge
 import { connection } from "next/server";
 
 import { deleteDailyAction } from "@/app/admin/actions";
+import { DeleteButton } from "@/components/admin/delete-button";
 import { CalendarIcon, TrashIcon } from "@/components/admin/icons";
 import { Badge, Card, DbError, PageHeader } from "@/components/admin/ui";
+import { LOCAL_CLAUDE_ENABLED } from "@/server/claude-cli";
 import { scheduledDailies } from "@/server/daily-data";
 
 import { DailyEditor } from "./daily-editor";
@@ -59,12 +61,13 @@ export default async function DailyPage() {
                 {fixed && (
                   <form action={deleteDailyAction}>
                     <input type="hidden" name="date" value={date} />
-                    <button
-                      className="rounded-lg p-2 text-muted hover:bg-rose-50 hover:text-rose-500"
+                    <DeleteButton
+                      label={`Remove the ${date} challenge`}
                       title="Back to the pool"
+                      confirmText={`Remove "${challenge.title}" from ${date}? That day goes back to the pool.`}
                     >
                       <TrashIcon />
-                    </button>
+                    </DeleteButton>
                   </form>
                 )}
               </div>
@@ -78,7 +81,7 @@ export default async function DailyPage() {
         </Card>
 
         <div className="flex flex-col gap-6">
-          <DailyEditor defaultDate={firstFree} />
+          <DailyEditor defaultDate={firstFree} localClaude={LOCAL_CLAUDE_ENABLED} />
           <Card title={`Built-in pool (${DAILY_POOL.length})`}>
             <p className="mb-3 text-sm text-muted">
               Days without a scheduled challenge take the pool in turn – everyone gets the same one and the same reel

@@ -38,6 +38,8 @@ type Props = {
   onStartTournament: () => void;
   /** Label of the main button (daily challenge: "Check challenge"). */
   startLabel?: string;
+  /** Daily challenge: the squad is checked, not taken to a tournament. */
+  daily?: boolean;
 };
 
 /** End-of-draft summary ("Card Details"): rating, chemistry, overall and what they are made of. */
@@ -48,6 +50,7 @@ export function SquadSummary({
   onNewGame,
   onStartTournament,
   startLabel = 'Start tournament',
+  daily = false,
 }: Props) {
   const insets = useSafeAreaInsets();
   const summary = useMemo(
@@ -89,7 +92,7 @@ export function SquadSummary({
               <View style={styles.row6}>
                 <Txt v="h24">Squad complete</Txt>
                 <Chip
-                  label="LOCKED"
+                  label={formation}
                   color={C.green}
                   bg={alpha(C.green, 0.2)}
                   type="capUpper"
@@ -137,7 +140,9 @@ export function SquadSummary({
                 </Txt>
               </View>
             </View>
-            <Chip label="Ready for Cup" color={C.gold} bg={alpha(C.surface3, 0.8)} icon="verified" radius={R.pill} />
+            {!daily && (
+              <Chip label="Ready to play" color={C.gold} bg={alpha(C.surface3, 0.8)} icon="verified" radius={R.pill} />
+            )}
           </View>
         </View>
 

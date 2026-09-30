@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { deleteClubSeasonAction } from "@/app/admin/actions";
 import { SearchIcon, ShieldIcon, TrashIcon, UploadIcon } from "@/components/admin/icons";
+import { DeleteButton } from "@/components/admin/delete-button";
 import { Pagination } from "@/components/admin/pagination";
 import { SortHeader } from "@/components/admin/sort-header";
 import { Card, DbError, PageHeader, buttonClass } from "@/components/admin/ui";
@@ -163,12 +164,12 @@ export default async function ClubsPage({ searchParams }: PageProps<"/admin/club
                     <td className="px-3 py-3 text-right">
                       <form action={deleteClubSeasonAction}>
                         <input type="hidden" name="id" value={String(row._id)} />
-                        <button
-                          aria-label={`Delete ${row.club} ${seasonLabel(row.season)}`}
-                          className="rounded-lg p-2 text-muted hover:bg-rose-50 hover:text-rose-500"
+                        <DeleteButton
+                          label={`Delete ${row.club} ${seasonLabel(row.season)}`}
+                          confirmText={`Delete ${row.club} ${seasonLabel(row.season)} and its ${row.players} players?`}
                         >
                           <TrashIcon />
-                        </button>
+                        </DeleteButton>
                       </form>
                     </td>
                   </tr>

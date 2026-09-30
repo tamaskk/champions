@@ -9,11 +9,10 @@ import {
 
 import { fetchClubs, fetchSquad, toDraftPlayer } from '@/api/client';
 import type { DraftPick } from '@/components/draft-spin';
-import { randomPlayers } from '@/mocks/players';
 
 const LEAGUE_LABELS = Object.values(LEAGUE_ADJECTIVES);
 const DECADE_LABELS = DECADES.map(decadeLabel);
-// Random club-decades to try per spot before falling back to a dummy player.
+// Random club-decades to try per spot before giving up on it.
 const ATTEMPTS_PER_SPOT = 8;
 
 const pick = <T>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)];
@@ -39,43 +38,45 @@ async function drawForSpot(spot: Spot, taken: Set<string>): Promise<DraftPick | 
   return player && { player, league, club, decade };
 }
 
-function dummyForSpot(spot: Spot, taken: Set<string>): DraftPick {
-  const league = pick(LEAGUE_LABELS);
-  const player =
-    randomPlayers(league).find((p) => p.position === spot.role && !taken.has(p.name)) ??
-    randomPlayers(league).filter((p) => p.position === spot.role)[0];
-  return { player, league, club: 'Demo club', decade: pick(DECADE_LABELS) };
-}
+/** The filled slots, and how many stayed empty (no fitting player found, or offline). */
+export type Autofill = { picks: (DraftPick | null)[]; missing: number };
 
 /**
- * Fills every empty spot of the lineup. Each spot gets up to ATTEMPTS_PER_SPOT random draws; if
- * none yields a fitting player (or the API is unreachable), a dummy player takes the spot.
- * `isCancelled` stops the work when the game was closed meanwhile.
+ * Fills each empty slot with a real player: up to ATTEMPTS_PER_SPOT random draws per slot. A slot
+ * no draw fills stays empty (never a made-up player); once the API is unreachable the rest stay
+ * empty too. `isCancelled` stops the work when the game was closed meanwhile.
  */
-export async function autofillLineup(
+async function fillSlots(
+  slots: (DraftPick | null)[],
+  spotFor: (i: number) => Spot,
+  taken: Set<string>,
+  isCancelled: () => boolean,
+): Promise<Autofill | null> {
+  const picks = [...slots];
+  let offline = false;
+  for (let i = 0; i < picks.length; i++) {
+    if (picks[i]) continue;
+    for (let attempt = 0; attempt < ATTEMPTS_PER_SPOT && !picks[i] && !offline; attempt++) {
+      if (isCancelled()) return null;
+      try {
+        picks[i] = await drawForSpot(spotFor(i), taken);
+      } catch {
+        offline = true; // no point retrying
+      }
+    }
+    if (picks[i]) taken.add(picks[i]!.player.name);
+  }
+  return { picks, missing: picks.filter((p) => !p).length };
+}
+
+/** Fills every empty spot of the lineup; null when cancelled. */
+export function autofillLineup(
   spots: Spot[],
   lineup: (DraftPick | null)[],
   isCancelled: () => boolean,
-): Promise<(DraftPick | null)[]> {
-  const next = [...lineup];
-  const taken = new Set(next.flatMap((p) => (p ? [p.player.name] : [])));
-
-  for (let i = 0; i < spots.length; i++) {
-    if (next[i]) continue;
-    let chosen: DraftPick | null = null;
-    for (let attempt = 0; attempt < ATTEMPTS_PER_SPOT && !chosen; attempt++) {
-      if (isCancelled()) return lineup;
-      try {
-        chosen = await drawForSpot(spots[i], taken);
-      } catch {
-        break; // offline: no point retrying
-      }
-    }
-    chosen ??= dummyForSpot(spots[i], taken);
-    next[i] = chosen;
-    taken.add(chosen.player.name);
-  }
-  return next;
+): Promise<Autofill | null> {
+  const taken = new Set(lineup.flatMap((p) => (p ? [p.player.name] : [])));
+  return fillSlots(lineup, (i) => spots[i], taken, isCancelled);
 }
 
 /** What Autocomplete puts on an empty bench: cover for every line. */
@@ -87,29 +88,12 @@ const BENCH_PLAN: Spot[] = [
   { code: 'CM', role: 'MF' },
 ];
 
-/** Fills every empty bench slot the same way, avoiding anyone already in `lineup` or on the bench. */
-export async function autofillBench(
+/** Fills every empty bench slot the same way, avoiding anyone already in `lineup` or on the bench; null when cancelled. */
+export function autofillBench(
   bench: (DraftPick | null)[],
   lineup: (DraftPick | null)[],
   isCancelled: () => boolean,
-): Promise<(DraftPick | null)[]> {
-  const next = [...bench];
+): Promise<Autofill | null> {
   const taken = new Set([...lineup, ...bench].flatMap((p) => (p ? [p.player.name] : [])));
-  for (let i = 0; i < next.length; i++) {
-    if (next[i]) continue;
-    const spot = BENCH_PLAN[i % BENCH_PLAN.length];
-    let chosen: DraftPick | null = null;
-    for (let attempt = 0; attempt < ATTEMPTS_PER_SPOT && !chosen; attempt++) {
-      if (isCancelled()) return bench;
-      try {
-        chosen = await drawForSpot(spot, taken);
-      } catch {
-        break;
-      }
-    }
-    chosen ??= dummyForSpot(spot, taken);
-    next[i] = chosen;
-    taken.add(chosen.player.name);
-  }
-  return next;
+  return fillSlots(bench, (i) => BENCH_PLAN[i % BENCH_PLAN.length], taken, isCancelled);
 }

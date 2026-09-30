@@ -1,4 +1,4 @@
-import { STARTER_OFFER_DAYS, STARTER_PACK, type DailyResponse } from '@champion/shared';
+import { FORMATIONS, STARTER_OFFER_DAYS, STARTER_PACK, seasonOf, type DailyResponse } from '@champion/shared';
 import { useState } from 'react';
 import { Image } from 'expo-image';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -16,11 +16,18 @@ import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, IMAGES, NAV_ROOM, R, alpha } from '@/design/tokens';
 import { Chip, Glow, SHADOW_LG, SHADOW_SM, ScreenHeader, SectionTitle } from '@/design/ui';
 
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+/** The live Season Pass season (a calendar month): "SEP 2026 SEASON". */
+const seasonLabel = () => {
+  const [year, month] = seasonOf().split('-');
+  return `${MONTHS[Number(month) - 1]} ${year} SEASON`;
+};
+
 const STEPS = [
   {
     color: C.green,
     title: 'Spin Formation',
-    text: 'Slot reel selects from 90 verified tactical formations (4-3-3, 3-4-2-1, 4-2-2-2).',
+    text: `Slot reel picks one of ${FORMATIONS.length} formations: classics like 4-3-3 and 3-4-2-1, and wild ones like 2-3-5.`,
   },
   {
     color: C.gold,
@@ -78,7 +85,7 @@ export function HomeLanding({
               <View style={styles.seasonPill}>
                 <View style={styles.greenDot} />
                 <Txt v="capUpper" color={C.textMuted}>
-                  SEASON 04 ACTIVE
+                  {seasonLabel()}
                 </Txt>
               </View>
               <View style={styles.row4}>

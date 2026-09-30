@@ -88,14 +88,6 @@ export default function ExploreScreen() {
           <View style={styles.between}>
             <View style={styles.row4}>
               <Txt v="h20">Explore & Vault</Txt>
-              <Chip
-                label="V1.4 DATABASE"
-                color={C.green}
-                bg={C.surface3}
-                type="capUpper"
-                radius={R.pill}
-                style={{ paddingVertical: 2 }}
-              />
             </View>
             <Pressable
               onPress={() => setSearching(true)}

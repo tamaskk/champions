@@ -23,7 +23,7 @@ import {
   FREE_RESPINS_PER_DRAFT,
 } from '@champion/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -154,6 +154,14 @@ export default function HomeScreen() {
   // The squad is complete with a full XI (the bench is optional, BENCH_MIN = 0).
   const squadReady = lineupFull && (!useBench || benchCount >= BENCH_MIN);
   const placed = lineup.filter((p): p is DraftPick => !!p);
+  // Pitch tag: the era only when the whole XI so far comes from one decade.
+  const placedDecades = new Set(placed.map((p) => p.decade));
+  const arcadeTag =
+    placedDecades.size === 1
+      ? `ARCADE ${placed[0]!.decade}S`
+      : placedDecades.size > 1
+        ? `ARCADE · ${placedDecades.size} DECADES`
+        : 'ARCADE MODE';
   // Dummy players have no rating and add nothing.
   const ratingTotal = placed.reduce((sum, p) => sum + (p.player.rating ?? 0), 0);
   // Main position = blue, other position = gold, no fit = can't be placed there.
@@ -326,9 +334,10 @@ export default function HomeScreen() {
     setSelected(null);
     setAutofilling(true);
     const subs = await autofillBench(bench, lineup, () => id !== gameId.current);
-    if (id !== gameId.current) return;
-    setBench(subs);
+    if (!subs) return;
+    setBench(subs.picks);
     setAutofilling(false);
+    fillFailed(subs.missing, autoBench);
   };
 
   const spin = () => {
@@ -344,14 +353,27 @@ export default function HomeScreen() {
     setAutofilling(true);
     const cancelled = () => id !== gameId.current;
     const next = await autofillLineup(spots, lineup, cancelled);
-    if (cancelled()) return;
-    setLineup(next);
-    if (useBench) {
-      const subs = await autofillBench(bench, next, cancelled);
-      if (cancelled()) return;
-      setBench(subs);
+    if (!next) return;
+    setLineup(next.picks);
+    let missing = next.missing;
+    if (useBench && !missing) {
+      const subs = await autofillBench(bench, next.picks, cancelled);
+      if (!subs) return;
+      setBench(subs.picks);
+      missing = subs.missing;
     }
     setAutofilling(false);
+    fillFailed(missing, autocomplete);
+  };
+
+  // Autofill never makes players up: slots it could not fill stay empty, with a retry.
+  const fillFailed = (missing: number, retry: () => void) => {
+    if (!missing) return;
+    Alert.alert(
+      `${missing} ${missing === 1 ? 'spot' : 'spots'} left empty`,
+      'Could not load real players for them. Check your connection and try again, or spin them yourself.',
+      [{ text: 'Close', style: 'cancel' }, { text: 'Try again', onPress: retry }],
+    );
   };
 
   const complete = () => {
@@ -774,7 +796,7 @@ export default function HomeScreen() {
               tag={
                 daily
                   ? 'DAILY CHALLENGE'
-                  : `${placed[0] ? `ARCADE ${placed[0].decade}S` : 'ARCADE MODE'}${boost ? ` · ⚡ ${DRAFT_BOOSTS[boost].name.toUpperCase()}` : ''}`
+                  : `${arcadeTag}${boost ? ` · ⚡ ${DRAFT_BOOSTS[boost].name.toUpperCase()}` : ''}`
               }
             />
           </View>
@@ -1045,6 +1067,7 @@ export default function HomeScreen() {
           }}
           onStartTournament={() => setShowTournaments(true)}
           startLabel={daily ? 'Check challenge' : 'Start tournament'}
+          daily={!!daily}
         />
       )}
 

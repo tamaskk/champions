@@ -11,6 +11,7 @@ import {
 import { useActionState, useMemo, useState, useTransition } from "react";
 
 import { askClaudeForDailiesAction, saveDailyAction, type DailySaveState } from "@/app/admin/actions";
+import { CheckIcon, FileIcon } from "@/components/admin/icons";
 import { buttonClass, Card } from "@/components/admin/ui";
 
 const DECADE_OPTIONS = [1960, 1970, 1980, 1990, 2000, 2010, 2020];
@@ -28,7 +29,7 @@ const slug = (s: string) =>
     .replace(/^-|-$/g, "");
 
 /** Create one challenge with a form, or paste / generate a JSON batch; validated before saving. */
-export function DailyEditor({ defaultDate }: { defaultDate: string }) {
+export function DailyEditor({ defaultDate, localClaude }: { defaultDate: string; localClaude: boolean }) {
   const [tab, setTab] = useState<"form" | "json">("form");
   const [form, setForm] = useState({
     date: defaultDate,
@@ -47,6 +48,7 @@ export function DailyEditor({ defaultDate }: { defaultDate: string }) {
   const [source, setSource] = useState<"admin" | "claude">("admin");
   const [count, setCount] = useState(7);
   const [claudeError, setClaudeError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [asking, startAsking] = useTransition();
   const [state, formAction, saving] = useActionState<DailySaveState, FormData>(saveDailyAction, { status: "idle" });
 
@@ -85,6 +87,12 @@ export function DailyEditor({ defaultDate }: { defaultDate: string }) {
 
   const toggle = <T,>(list: T[], item: T) => (list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+
+  const copyPrompt = async () => {
+    await navigator.clipboard.writeText(buildDailyPrompt(count, defaultDate));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const askClaude = () =>
     startAsking(async () => {
@@ -237,7 +245,7 @@ export function DailyEditor({ defaultDate }: { defaultDate: string }) {
             onChange={(e) => setJson(e.target.value)}
           />
           <div className="flex flex-wrap items-center gap-2 rounded-xl bg-canvas p-3 text-sm">
-            <span className="text-muted">Claude:</span>
+            <span className="text-muted">Prompt for</span>
             <input
               type="number"
               min={1}
@@ -247,15 +255,14 @@ export function DailyEditor({ defaultDate }: { defaultDate: string }) {
               onChange={(e) => setCount(Number(e.target.value))}
             />
             <span className="text-muted">days from {defaultDate}</span>
-            <button type="button" onClick={askClaude} disabled={asking} className={buttonClass.secondary}>
-              {asking ? "Claude is thinking…" : "Generate with Claude CLI"}
-            </button>
-            <button
-              type="button"
-              className={buttonClass.secondary}
-              onClick={() => navigator.clipboard.writeText(buildDailyPrompt(count, defaultDate))}
-            >
-              Copy prompt
+            {localClaude && (
+              <button type="button" onClick={askClaude} disabled={asking} className={buttonClass.secondary}>
+                {asking ? "Claude is thinking…" : "Generate with Claude CLI"}
+              </button>
+            )}
+            <button type="button" className={buttonClass.secondary} onClick={copyPrompt}>
+              {copied ? <CheckIcon className="text-emerald-600" /> : <FileIcon />}
+              {copied ? "Copied" : "Copy prompt"}
             </button>
           </div>
           {claudeError && <p className="text-sm text-rose-500">{claudeError}</p>}

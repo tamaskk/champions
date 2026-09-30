@@ -61,20 +61,23 @@ export function MatchSetup({
   const [season, setSeason] = useState(lastCompleteSeason());
   const [clubSlug, setClubSlug] = useState<string | null>(null);
   const [open, setOpen] = useState<'league' | 'season' | 'club' | null>(null);
-  const [table, setTable] = useState<LeagueTableResponse | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  // The loaded table (or its error) remembers which league season it belongs to; anything else is
+  // still loading – derived, so nothing needs resetting when the choice changes.
+  const tableKey = `${league}-${season}`;
+  const [loaded, setLoaded] = useState<{ key: string; table: LeagueTableResponse | null }>({ key: '', table: null });
+  const table = loaded.key === tableKey ? loaded.table : null;
+  const status: 'loading' | 'ready' | 'error' = loaded.key !== tableKey ? 'loading' : table ? 'ready' : 'error';
   const request = useRef(0);
   const wantClub = useRef<'random' | null>(null);
 
   // The club list is that league season's table.
   useEffect(() => {
     const id = ++request.current;
-    setStatus('loading');
+    const key = `${league}-${season}`;
     fetchTable({ league, season })
       .then((t) => {
         if (id !== request.current) return;
-        setTable(t);
-        setStatus('ready');
+        setLoaded({ key, table: t });
         // Read the ref now: the state updater runs later, after it has been cleared.
         const random = wantClub.current === 'random';
         wantClub.current = null;
@@ -82,7 +85,7 @@ export function MatchSetup({
           random ? randomOf(t.rows).clubSlug : t.rows.some((r) => r.clubSlug === current) ? current : null,
         );
       })
-      .catch(() => id === request.current && setStatus('error'));
+      .catch(() => id === request.current && setLoaded({ key, table: null }));
   }, [league, season]);
 
   const pickRandom = () => {
@@ -96,15 +99,17 @@ export function MatchSetup({
   };
 
   // The opponent's likely XI (for its rating) as soon as a club is chosen.
-  const [opponentXI, setOpponentXI] = useState<OpponentResponse | null>(null);
+  const opponentKey = clubSlug ? `${league}|${season}|${clubSlug}` : null;
+  const [opponentLoaded, setOpponentLoaded] = useState<{ key: string; xi: OpponentResponse } | null>(null);
+  const opponentXI = opponentLoaded && opponentLoaded.key === opponentKey ? opponentLoaded.xi : null;
   // Once the match has kicked off the choice is locked.
   const [locked, setLocked] = useState(false);
   useEffect(() => {
-    setOpponentXI(null);
     if (!clubSlug) return;
     let live = true;
+    const key = `${league}|${season}|${clubSlug}`;
     fetchOpponent({ league, season, club: clubSlug })
-      .then((o) => live && setOpponentXI(o))
+      .then((o) => live && setOpponentLoaded({ key, xi: o }))
       .catch(() => undefined);
     return () => {
       live = false;

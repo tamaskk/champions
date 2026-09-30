@@ -29,6 +29,7 @@ import { C, R, alpha } from '@/design/tokens';
 import { Btn, Chip, SHADOW_LG } from '@/design/ui';
 import { equip, equipCosmetic, pushToast, useProgress } from '@/game/progress';
 import { shareText } from '@/game/share';
+import { useAds, watchRewardedAd } from '@/game/ads';
 import {
   buy,
   changeUsername,
@@ -476,6 +477,9 @@ function FreeTab({ busy, run }: TabProps) {
   const { wallet } = useWallet();
   const [code, setCode] = useState('');
   const [ad, setAd] = useState<number | null>(null);
+  const ads = useAds();
+  const [adBusy, setAdBusy] = useState(false);
+  const [adNote, setAdNote] = useState<string | null>(null);
   const adTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => () => {
     if (adTimer.current) clearInterval(adTimer.current);
@@ -493,6 +497,25 @@ function FreeTab({ busy, run }: TabProps) {
       setAd(null);
       void claim('rewarded-ad', requestId(), 'Thanks for watching');
     }, 250);
+  };
+
+  // Real rewarded ad (AdMob) when the SDK is in this build; the simulated one otherwise.
+  const watchRealAd = async () => {
+    setAdBusy(true);
+    setAdNote(null);
+    const r = await watchRewardedAd();
+    setAdBusy(false);
+    setAdNote(
+      r === 'earned'
+        ? ads.live
+          ? 'Thanks for watching – your coins arrive in a few seconds.'
+          : null
+        : r === 'closed'
+          ? 'Closed early – watch to the end for the coins.'
+          : r === 'limit'
+            ? "That's all the videos for today."
+            : 'No video available right now. Try again later.',
+    );
   };
 
   if (!wallet) return null;
@@ -528,16 +551,25 @@ function FreeTab({ busy, run }: TabProps) {
               {AD_COINS} coins per video · {wallet.adsToday}/{ADS_PER_DAY} today
             </Txt>
             <Txt v="cap" color={C.textMuted}>
-              {ADS_SIMULATED ? 'Test mode: a simulated 5-second ad' : 'Coming soon'}
+              {adNote ??
+                (ads.available
+                  ? ads.live
+                    ? 'A short video – the coins come right after'
+                    : 'Test ads (no real advertiser)'
+                  : ADS_SIMULATED
+                    ? 'Test mode: a simulated 5-second ad'
+                    : 'Coming soon')}
             </Txt>
           </View>
           <Btn
             kind="blue"
-            label={ad !== null ? `${ad}s` : 'WATCH'}
+            label={ad !== null ? `${ad}s` : adBusy ? 'LOADING…' : 'WATCH'}
             height={36}
             labelType="capUpper"
-            disabled={!ADS_SIMULATED || ad !== null || wallet.adsToday >= ADS_PER_DAY}
-            onPress={watchAd}
+            disabled={
+              (!ads.available && !ADS_SIMULATED) || ad !== null || adBusy || wallet.adsToday >= ADS_PER_DAY
+            }
+            onPress={ads.available ? watchRealAd : watchAd}
           />
         </View>
       </Section>

@@ -5,6 +5,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn } from '@/design/ui';
+import { showAdPrivacyOptions, useAds } from '@/game/ads';
 import { dismissReminderOffer, setPushSetting, useOfferReminder, usePushSettings } from '@/game/push';
 
 const DENIED = 'Notifications are off for Spinvincible in your phone settings.';
@@ -12,6 +13,7 @@ const DENIED = 'Notifications are off for Spinvincible in your phone settings.';
 /** Profile: the two notification switches (both at most one a day). */
 export function NotificationSettings() {
   const settings = usePushSettings();
+  const ads = useAds();
   const [note, setNote] = useState<string | null>(null);
   if (Platform.OS === 'web') return null;
 
@@ -54,6 +56,9 @@ export function NotificationSettings() {
         <Txt v="cap" color={C.gold}>
           {note}
         </Txt>
+      )}
+      {ads.privacyOptions && (
+        <Btn kind="dark" icon="shield" label="AD PRIVACY CHOICES" height={40} onPress={() => void showAdPrivacyOptions()} />
       )}
     </View>
   );

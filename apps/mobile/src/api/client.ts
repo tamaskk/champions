@@ -325,3 +325,6 @@ export const sendCrash = (body: CrashReport) => postAnonymous('/api/crashes', bo
 /** Push token for "your XI was beaten" (null: none; the server then sends nothing). */
 export const registerPush = (body: { token: string | null; beaten: boolean }) =>
   postJSON<{ ok: true }>('/api/push/register', body);
+
+/** A one-time ticket for the next rewarded ad (AdMob sends it back to the server with the reward). */
+export const adTicket = () => postJSON<{ ticket: string } | { ticket: null; reason: string }>('/api/ads/ticket', {});

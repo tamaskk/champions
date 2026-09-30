@@ -73,6 +73,15 @@ export default function PrivacyPage() {
           nothing. Basis: your consent (Art. 6(1)(a)).
         </p>
         <p>
+          <strong>Rewarded video ads (optional).</strong> In the shop you can choose to watch a video for coins. The
+          videos come from Google AdMob, which processes your device&apos;s advertising identifier, IP address and
+          device information to deliver the ad, measure it and prevent fraud – as an independent controller under
+          Google&apos;s own privacy policy (policies.google.com/privacy). In the EEA, the UK and Switzerland the app asks
+          for your consent first (Google&apos;s consent form); without it you still get non-personalised ads, and you
+          can change your choice any time in Profile. We only learn that a video was watched to the end, so that we can
+          credit the coins. Basis: your consent for personalised ads (Art. 6(1)(a)); contract for crediting the coins.
+        </p>
+        <p>
           <strong>On your device.</strong> The app keeps your progress, settings, records and drafts in progress in its
           own storage on your device. It does not read other data on your phone.
         </p>
@@ -80,7 +89,7 @@ export default function PrivacyPage() {
 
       <Section title="3. What we don't do">
         <ul>
-          <li>No advertising or third-party analytics SDKs, no tracking across apps or websites, no selling or renting of data.</li>
+          <li>No ads you didn&apos;t ask for: an ad only plays when you tap &ldquo;Watch&rdquo; for coins. No selling or renting of data.</li>
           <li>No photos, contacts, location or microphone data.</li>
           <li>No automated decisions with legal or similarly significant effects on you.</li>
         </ul>
@@ -92,6 +101,7 @@ export default function PrivacyPage() {
           <li>Vercel Inc. – hosting of this website and the game&apos;s server.</li>
           <li>MongoDB Inc. (Atlas) – database, region: {OPERATOR.databaseRegion}.</li>
           <li>Resend – sending password-reset emails.</li>
+          <li>Google Ireland Ltd. (AdMob) – rewarded video ads you choose to watch.</li>
           <li>Expo (650 Industries, Inc.) – delivering push notifications, if you turn them on.</li>
           <li>Apple, Google and RevenueCat – in-app purchases, once available.</li>
         </ul>

@@ -52,6 +52,9 @@ export const RATE_RULES: Record<string, Rule> = {
   "POST /api/auth/delete": { user: { limit: 10, windowSec: HOUR } },
   "POST /api/auth/recovery": { user: { limit: 10, windowSec: HOUR } },
   "POST /api/push/register": { user: { limit: 30, windowSec: HOUR } },
+  "POST /api/ads/ticket": { user: { limit: 60, windowSec: HOUR } },
+  // Google's callback servers: generous, just a wall against floods.
+  "GET /api/ads/ssv": { ip: { limit: 3000, windowSec: HOUR } },
 };
 
 /** Any other route: plenty for a real player, a wall for a script. */

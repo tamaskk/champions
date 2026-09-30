@@ -9,6 +9,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { ProgressToast } from '@/components/progress-toast';
 import { C, FONT_ASSETS } from '@/design/tokens';
+import { startAds } from '@/game/ads';
 import { startAnalytics } from '@/game/analytics';
 import { startPush } from '@/game/push';
 import { initWallet } from '@/game/wallet';
@@ -27,6 +28,7 @@ export default function TabLayout() {
     void initWallet();
     startAnalytics();
     startPush();
+    void startAds();
   }, []);
   return (
     <ThemeProvider value={THEME}>

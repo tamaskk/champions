@@ -186,6 +186,9 @@ export type CrashDoc = {
   createdAt: Date;
 };
 
+/** One rewarded ad about to be shown: the ticket travels through AdMob and back to /api/ads/ssv. */
+export type AdTicketDoc = { _id: string; userId: string; createdAt: Date; usedAt: Date | null };
+
 const globalForMongo = globalThis as unknown as { mongo?: Promise<Db> };
 
 async function connect(uri: string): Promise<Db> {
@@ -231,6 +234,8 @@ async function connect(uri: string): Promise<Db> {
   await db
     .collection<MiniLeagueDoc>("miniLeagues")
     .createIndexes([{ key: { code: 1 }, unique: true }, { key: { members: 1 } }]);
+  // Ad tickets live for 2 hours (a callback can come a little after the ad closes).
+  await db.collection<AdTicketDoc>("adTickets").createIndex({ createdAt: 1 }, { expireAfterSeconds: 2 * 3600 });
   // Analytics and crash reports expire after ANALYTICS_LIMITS.keepDays (180).
   await db.collection<EventDoc>("events").createIndexes([
     { key: { receivedAt: 1 }, expireAfterSeconds: 180 * 86400 },
@@ -310,6 +315,10 @@ export async function miniLeagues(): Promise<Collection<MiniLeagueDoc>> {
 }
 
 /** The Mongo client, for multi-document transactions (wallet + ledger). */
+export async function adTickets(): Promise<Collection<AdTicketDoc>> {
+  return (await getDb()).collection<AdTicketDoc>("adTickets");
+}
+
 export async function events(): Promise<Collection<EventDoc>> {
   return (await getDb()).collection<EventDoc>("events");
 }

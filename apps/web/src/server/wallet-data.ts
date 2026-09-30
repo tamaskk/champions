@@ -337,6 +337,19 @@ export async function claim(body: { userId?: unknown; source?: unknown; key?: un
   return r.ok ? { granted: amount, balance: r.balance } : reject(r.duplicate ? "Already collected" : "Not possible", r.balance);
 }
 
+/**
+ * A rewarded ad view confirmed by AdMob's signed server-side callback (see ads-data.ts): pays
+ * AD_COINS once per transaction id, within the daily cap. The device is never asked.
+ */
+export async function creditAdView(userId: string, transactionId: string): Promise<"paid" | "duplicate" | "capped"> {
+  if ((await claimsToday(userId, "rewarded-ad")) >= ADS_PER_DAY) return "capped";
+  const r = await move(userId, `rewarded-ad:ssv:${transactionId}`, "rewarded-ad", AD_COINS, {}, { transactionId });
+  return r.ok ? "paid" : "duplicate";
+}
+
+/** Rewarded views collected today (for the ad ticket check). */
+export const adViewsToday = (userId: string) => claimsToday(userId, "rewarded-ad");
+
 export const adsEnabled = () => process.env.NODE_ENV !== "production" || process.env.ADS_SIMULATED === "1";
 
 // ---------------------------------------------------------------------------------------------

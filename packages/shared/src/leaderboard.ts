@@ -19,6 +19,8 @@ export type SavedPlayer = {
   club: string;
   decade: string;
   league: string;
+  /** Wears the armband (+1 chemistry to his linked neighbours). */
+  captain?: boolean;
 };
 
 /** What a squad achieved with its one tournament. */

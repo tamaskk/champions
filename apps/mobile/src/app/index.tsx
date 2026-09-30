@@ -372,6 +372,7 @@ export default function HomeScreen() {
                 club: p.club,
                 decade: p.decade,
                 league: p.league,
+                ...(p.player.id === captainId ? { captain: true } : {}),
               },
             ]
           : [],

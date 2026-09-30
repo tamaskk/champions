@@ -1,8 +1,17 @@
 import "server-only";
 
 import {
+  DECADES,
   FORMATIONS,
+  LEAGUE_ADJECTIVES,
   PLAYER_ROLES,
+  decadeLabel,
+  formationLayout,
+  formationRoles,
+  slugify,
+  squadSummary,
+  type ChemistryPlayer,
+  type League,
   generateUsername,
   type LeaderboardEntry,
   type SaveSquadRequest,
@@ -15,6 +24,7 @@ import { ObjectId, type WithId } from "mongodb";
 import { randomUUID } from "node:crypto";
 
 import { savedSquads, users, type SavedSquadDoc } from "./db";
+import { squadInDecade } from "./squad-data";
 
 export class BadRequest extends Error {
   name = "BadRequest";
@@ -59,6 +69,61 @@ function cleanPlayer(p: unknown): SavedPlayer {
     club: str(x.club, 80),
     decade: str(x.decade, 6),
     league: str(x.league, 20),
+    ...(x.captain === true ? { captain: true } : {}),
+  };
+}
+
+const leagueOf = (label: string) =>
+  (Object.keys(LEAGUE_ADJECTIVES) as League[]).find((l) => LEAGUE_ADJECTIVES[l] === label || l === label) ?? null;
+const decadeOf = (label: string) => DECADES.find((d) => decadeLabel(d) === label || String(d) === label) ?? null;
+
+/**
+ * The squad as the server sees it: every player looked up in the club's real squad of that decade
+ * (rating, positions and career for chemistry come from the database, never from the client), then
+ * overall, rating and chemistry computed with the same function the app uses. A player that can't be
+ * found (e.g. a demo player where no squad is imported) counts as unrated and without links.
+ */
+async function verifySquad(formation: string, sent: SavedPlayer[]) {
+  const layout = formationLayout(formation);
+  const roles = formationRoles(formation);
+  sent.forEach((p, i) => {
+    if (p.spot !== layout[i]!.code || p.role !== roles[i]) throw new BadRequest(`players[${i}]: spot`);
+  });
+  if (new Set(sent.map((p) => `${p.name}|${p.club}|${p.decade}`)).size !== sent.length) throw new BadRequest("players: duplicate");
+  if (sent.filter((p) => p.captain).length > 1) throw new BadRequest("players: one captain at most");
+
+  const squads = new Map<string, Awaited<ReturnType<typeof squadInDecade>>>();
+  const lineup: (ChemistryPlayer & { rating: number | null })[] = [];
+  const players: SavedPlayer[] = [];
+  for (const p of sent) {
+    const league = leagueOf(p.league);
+    const decade = decadeOf(p.decade);
+    const clubSlug = slugify(p.club);
+    let found: Awaited<ReturnType<typeof squadInDecade>>[number] | undefined;
+    if (league && decade && clubSlug) {
+      const key = `${league}|${decade}|${clubSlug}`;
+      if (!squads.has(key)) squads.set(key, await squadInDecade(league, decade, clubSlug));
+      const nameSlug = slugify(p.name);
+      found = squads.get(key)!.find((q) => q.nameSlug === nameSlug || q.name === p.name);
+    }
+    const rating = found?.rating ?? null;
+    lineup.push({
+      id: found?.nameSlug ?? slugify(p.name),
+      name: p.name,
+      position: found?.position ?? p.role,
+      positions: found?.positions ?? [],
+      chemistry: found?.chemistry ?? null,
+      rating,
+      captain: p.captain === true,
+    });
+    players.push({ ...p, rating });
+  }
+  const summary = squadSummary(formation, lineup);
+  return {
+    players,
+    overall: Math.round(summary.overall * 100) / 100,
+    rating: Math.round(summary.rating * 100) / 100,
+    chemistry: summary.chemistry.team,
   };
 }
 
@@ -67,14 +132,16 @@ export async function saveSquad(body: SaveSquadRequest | null): Promise<{ id: st
   const user = await userOf(body.userId);
   if (!(FORMATIONS as readonly string[]).includes(body.formation)) throw new BadRequest("formation");
   if (!Array.isArray(body.players) || body.players.length !== 11) throw new BadRequest("players: 11 expected");
+  // Overall, rating and chemistry are recomputed here from the database – the client's numbers are ignored.
+  const squad = await verifySquad(body.formation, body.players.map(cleanPlayer));
   const doc: SavedSquadDoc = {
     userId: user.userId,
     username: user.username,
     formation: body.formation,
-    overall: num(body.overall, 0, 100) ?? 0,
-    rating: num(body.rating, 0, 100) ?? 0,
-    chemistry: Math.round(num(body.chemistry, 0, 100) ?? 0),
-    players: body.players.map(cleanPlayer),
+    overall: squad.overall,
+    rating: squad.rating,
+    chemistry: squad.chemistry,
+    players: squad.players,
     results: [],
     createdAt: new Date(),
   };

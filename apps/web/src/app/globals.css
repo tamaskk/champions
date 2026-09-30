@@ -95,6 +95,23 @@ body {
 .lp-letter { display: inline-block; }
 [data-state="armed"] .lp-letter { opacity: 0; transform: translateY(40%); }
 
+/* Footer CTA: a glass pill with a 1.5px orange/red border that keeps rotating. */
+@property --lp-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes lp-border-spin { to { --lp-angle: 360deg; } }
+.lp-ring-border {
+  position: relative; isolation: isolate;
+  background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.lp-ring-border::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1.5px;
+  background: conic-gradient(from var(--lp-angle), #ff8a00, #ea580c, transparent 40%, #ff8a00 60%, #ea580c, #ff8a00);
+  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: lp-border-spin 4s linear infinite;
+}
+.lp-ring-border:hover { transform: translateY(-1px); box-shadow: 0 0 32px rgba(255, 138, 0, 0.25); }
+
 /* Primary buttons: a light sweep on hover. */
 .lp-shine { position: relative; overflow: hidden; isolation: isolate; }
 .lp-shine::after {
@@ -106,7 +123,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .lp-line > span, .lp-fade-up, .lp-phone-in, .lp-card-left, .lp-card-right, .lp-pop, .lp-aurora, .lp-spin-slow,
-  .lp-spin-slower, .lp-pulse, .lp-shine:hover::after { animation: none !important; }
+  .lp-spin-slower, .lp-pulse, .lp-shine:hover::after, .lp-ring-border::before { animation: none !important; }
+  .lp-footer-video { display: none; }
   .lp-phone-in { transform: rotate(-4deg); }
   .lp-reveal, .lp-draw, .lp-letter { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
 }

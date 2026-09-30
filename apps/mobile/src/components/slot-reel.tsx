@@ -1,7 +1,14 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import { C, F, alpha } from '@/design/tokens';
 import { useProgress } from '@/game/progress';
@@ -31,6 +38,11 @@ type Props<T extends string> = {
   random?: () => number;
   /** Relative chance of each item (draft boosts); uniform without. */
   weights?: readonly number[];
+  /**
+   * Tapping a spinning reel stops it on whatever is on the payline at that moment (casual drafts).
+   * Off for seeded reels (the Daily: everyone gets the same result) and weighted ones (a boost's odds).
+   */
+  stopAnywhere?: boolean;
   ref?: Ref<SlotReelHandle>;
 };
 
@@ -52,6 +64,7 @@ export function SlotReel<T extends string>({
   visibleRows = DEFAULT_VISIBLE_ROWS,
   random = Math.random,
   weights,
+  stopAnywhere = false,
   ref,
 }: Props<T>) {
   const progress = useProgress();
@@ -68,8 +81,10 @@ export function SlotReel<T extends string>({
   );
 
   // topRow = strip index shown in the top slot. The reel moves down, so topRow decreases.
-  const offsetY = useSharedValue(0);
-  const topRow = useRef(0);
+  // It starts at a random item, so the reels don't always show the same things first.
+  const [startTop] = useState(() => Math.floor(Math.random() * n));
+  const offsetY = useSharedValue(-startTop * rowHeight);
+  const topRow = useRef(startTop);
   const spinning = useRef(false);
   // Latest onResult/items, so a result delivered late still reaches the current screen.
   const latest = useRef({ onResult, items });
@@ -97,12 +112,33 @@ export function SlotReel<T extends string>({
   // The spin in progress (its result is drawn when it starts), for tap-to-stop.
   const current = useRef<{ spinId: number; index: number; endTop: number } | null>(null);
 
-  // Tap a spinning reel: it jumps straight to the result it was already going to show.
+  // Stopped by a tap: the item on the payline where the strip is right now is the result.
+  const stoppedAt = (spinId: number, top: number) => {
+    if (!spinning.current || spinId !== spinCount.current) return;
+    topRow.current = top;
+    finish(spinId, (((top + center) % n) + n) % n);
+  };
+
+  // Tap a spinning reel. Casual: it stops where it is. Seeded or boosted: it jumps to the result
+  // that was drawn when the spin started (so the Daily and a boost's odds stay as they are).
   const stop = () => {
     const c = current.current;
     if (!spinning.current || !c) return;
-    offsetY.value = -c.endTop * rowHeight; // cancels the running animation
-    finish(c.spinId, c.index);
+    if (!stopAnywhere || (weights && weights.length === n)) {
+      offsetY.value = -c.endTop * rowHeight; // cancels the running animation
+      finish(c.spinId, c.index);
+      return;
+    }
+    if (safety.current) clearTimeout(safety.current);
+    const rowH = rowHeight;
+    const spinId = c.spinId;
+    scheduleOnUI(() => {
+      'worklet';
+      cancelAnimation(offsetY);
+      const top = Math.round(-offsetY.value / rowH);
+      offsetY.value = withTiming(-top * rowH, { duration: 140, easing: Easing.out(Easing.quad) });
+      scheduleOnRN(stoppedAt, spinId, top);
+    });
   };
 
   useImperativeHandle(ref, () => ({
@@ -118,8 +154,10 @@ export function SlotReel<T extends string>({
       current.current = { spinId, index, endTop };
       offsetY.value = withSequence(
         withTiming(-startTop * rowHeight, { duration: 0 }),
-        withTiming(-endTop * rowHeight, { duration: spinMs, easing: Easing.out(Easing.poly(4)) }, () => {
-          scheduleOnRN(finish, spinId, index);
+        withTiming(-endTop * rowHeight, { duration: spinMs, easing: Easing.out(Easing.poly(4)) }, (finished) => {
+          // Not when a tap cancelled it (stop() delivers that result); an interrupted spin is
+          // settled by the safety timer.
+          if (finished) scheduleOnRN(finish, spinId, index);
         }),
       );
       safety.current = setTimeout(() => {

@@ -256,6 +256,7 @@ export function CupTournament({
               {reelWidth > 0 && (
                 <View style={styles.reelCol}>
                   <SlotReel
+                    stopAnywhere
                     key={`season-${round}`}
                     ref={reel}
                     items={seasonItems}

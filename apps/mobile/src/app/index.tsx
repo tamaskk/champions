@@ -115,6 +115,7 @@ export default function HomeScreen() {
   const [respinsUsed, setRespinsUsed] = useState(0);
   // Draft boost used in this draft (casual only): the club reel favours clubs with top-rated players.
   const [boost, setBoost] = useState<DraftBoostId | null>(null);
+  const [activatingBoost, setActivatingBoost] = useState<DraftBoostId | null>(null);
   // Casual draft: free re-spins used (then bought re-spins are spent).
   const [freeRespinsUsed, setFreeRespinsUsed] = useState(0);
   // Daily practice try (store item): not recorded, not ranked.
@@ -459,6 +460,20 @@ export default function HomeScreen() {
         }
       : null;
 
+  // Boosts owned, and using one for this draft (it applies to every club reel from now on).
+  const ownedBoosts: Record<DraftBoostId, number> = {
+    star: wallet?.consumables[DRAFT_BOOSTS.star.itemId] ?? 0,
+    legend: wallet?.consumables[DRAFT_BOOSTS.legend.itemId] ?? 0,
+  };
+  const activateBoost = async (b: DraftBoostId) => {
+    if (boost || activatingBoost) return false;
+    setActivatingBoost(b);
+    const ok = await consumeItem(DRAFT_BOOSTS[b].itemId);
+    setActivatingBoost(null);
+    if (ok) setBoost(b);
+    return ok;
+  };
+
   const handlePick = (pick: DraftPick) => {
     setDrawing(false);
     setPending(pick);
@@ -594,6 +609,7 @@ export default function HomeScreen() {
                 visibleRows={5}
                 fontSize={26}
                 random={dailyRandom.current ?? undefined}
+                stopAnywhere={!daily}
                 onResult={handleResult}
               />
               <View pointerEvents="none" style={styles.payline}>
@@ -868,6 +884,39 @@ export default function HomeScreen() {
               </Animated.View>
             )}
 
+            {/* Boosts you own: one tap uses one for this draft (not in the Daily). */}
+            {!daily && !boost && !pending && !moving && !sub && !squadReady && ownedBoosts.star + ownedBoosts.legend > 0 && (
+              <Animated.View entering={FadeIn.duration(200)} style={styles.boostRow}>
+                <Icon name="bolt" size={16} color={C.gold} />
+                <Txt v="capBody" color={C.textMuted} style={styles.flex}>
+                  Use a boost for this draft – clubs with top-rated players come up more often.
+                </Txt>
+                {(['star', 'legend'] as const).map((b) =>
+                  ownedBoosts[b] > 0 ? (
+                    <Pressable
+                      key={b}
+                      onPress={() => void activateBoost(b)}
+                      disabled={activatingBoost !== null}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Use ${DRAFT_BOOSTS[b].name} for this draft (${ownedBoosts[b]} left)`}
+                      style={({ pressed }) => [styles.boostChip, pressed && { opacity: 0.7 }]}>
+                      <Txt v="capUpper" color={C.onGold}>
+                        {activatingBoost === b ? '…' : `${DRAFT_BOOSTS[b].minRating}+ ×${ownedBoosts[b]}`}
+                      </Txt>
+                    </Pressable>
+                  ) : null,
+                )}
+              </Animated.View>
+            )}
+            {boost && !squadReady && (
+              <View style={styles.boostActive}>
+                <Icon name="bolt" size={14} color={C.gold} />
+                <Txt v="capBody" color={C.gold}>
+                  {DRAFT_BOOSTS[boost].name} on – clubs with {DRAFT_BOOSTS[boost].minRating}+ rated players come up more often
+                </Txt>
+              </View>
+            )}
+
             {!pending && !moving && !sub && (
               <Animated.View entering={FadeIn.duration(200)} style={squadReady && benchOpen ? styles.actionsColumn : styles.actions}>
                 {squadReady ? (
@@ -1005,15 +1054,8 @@ export default function HomeScreen() {
               ? undefined
               : {
                   active: boost,
-                  owned: {
-                    star: wallet?.consumables[DRAFT_BOOSTS.star.itemId] ?? 0,
-                    legend: wallet?.consumables[DRAFT_BOOSTS.legend.itemId] ?? 0,
-                  },
-                  onActivate: async (b) => {
-                    const ok = await consumeItem(DRAFT_BOOSTS[b].itemId);
-                    if (ok) setBoost(b);
-                    return ok;
-                  },
+                  owned: ownedBoosts,
+                  onActivate: activateBoost,
                 }
           }
           respins={
@@ -1328,6 +1370,29 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: R.md,
     backgroundColor: C.surface,
+  },
+  boostRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: R.md,
+    borderWidth: 1,
+    borderColor: alpha(C.gold, 0.35),
+    backgroundColor: alpha(C.gold, 0.08),
+  },
+  boostChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: R.pill,
+    backgroundColor: C.gold,
+  },
+  boostActive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   actionsColumn: {
     gap: 8,

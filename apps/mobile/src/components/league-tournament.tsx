@@ -248,6 +248,7 @@ export function LeagueTournament({
                       <View>
                         {i === 0 ? (
                           <SlotReel
+                            stopAnywhere
                             key={`league-${round}`}
                             ref={leagueReel}
                             items={Object.values(LEAGUE_ADJECTIVES)}
@@ -260,6 +261,7 @@ export function LeagueTournament({
                           />
                         ) : (
                           <SlotReel
+                            stopAnywhere
                             key={`season-${round}-${league}`}
                             ref={seasonReel}
                             items={seasonItems}

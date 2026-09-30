@@ -361,6 +361,7 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
                         fontSize={i === CLUB_SLOT ? 16 : 20}
                         lines={i === CLUB_SLOT ? 2 : 1}
                         random={rules?.random}
+                        stopAnywhere={!rules?.random}
                         weights={i === CLUB_SLOT ? clubWeights : undefined}
                         onResult={setResult(i)}
                       />

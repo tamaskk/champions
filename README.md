@@ -200,6 +200,7 @@ back to demo players, so the game is playable from the start.
 | `MONGODB_URI` | web, pipeline | MongoDB connection string |
 | `MONGODB_DB` | web, pipeline | Database name (default `champion`) |
 | `ADMIN_USER`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` | web | Admin login at `/admin-login`; the secret signs the session cookie. Without a password nobody can open `/admin` |
+| `RESEND_API_KEY`, `EMAIL_FROM` | web | Password-reset emails (6-digit code). Without them only the backup-code reset works in production |
 | `APIFY_TOKEN` | pipeline | Fetching Transfermarkt pages through Apify |
 | `API_FOOTBALL_KEY` | web | Optional, for recent seasons |
 | `REVENUECAT_WEBHOOK_AUTH` | web | Secret the RevenueCat webhook must send |
@@ -257,6 +258,7 @@ change goes into the coin ledger as "admin" with a note.
 | `POST /api/users`, `/api/squads`, `/api/h2h/*` | Guest users, leaderboard, head-to-head |
 | `POST /api/auth/register · login · me · password` | Email + password accounts |
 | `POST /api/wallet · wallet/claim · buy · use · invite · rename` | Coin wallet (server-side) |
+| `POST /api/auth/forgot`, `/api/auth/reset` | Forgotten password: emailed 6-digit code, or the account's backup code |
 | `POST /api/auth/delete` | Deletes the account and all its data (password for registered accounts) |
 | `POST /api/daily/score`, `/api/leagues · leagues/create · join · leave · detail` | Official daily scores and mini-leagues |
 | `POST /api/iap/revenuecat` | Store purchase webhook |

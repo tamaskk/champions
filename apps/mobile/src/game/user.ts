@@ -6,6 +6,8 @@ import {
   changeAccountPassword,
   createUser,
   deleteAccountRequest,
+  requestPasswordReset,
+  resetPasswordRequest,
   fetchProfile,
   fetchWallet,
   loginAccount,
@@ -146,4 +148,26 @@ export async function deleteAccount(password?: string): Promise<AuthResult> {
   eraseDeviceData();
   setUser(null);
   return { ok: true };
+}
+
+/** Forgotten password, step 1: a 6-digit code to the account's email. */
+export async function sendResetCode(email: string): Promise<AuthResult> {
+  try {
+    const r = await requestPasswordReset(email);
+    return r.ok ? { ok: true } : { ok: false, error: r.error };
+  } catch {
+    return { ok: false, error: 'No connection to the server' };
+  }
+}
+
+/** Forgotten password, step 2: the emailed code (or the backup code) and a new password – then logged in. */
+export async function resetPassword(email: string, proof: { code?: string; backupCode?: string }, newPassword: string): Promise<AuthResult> {
+  try {
+    const r = await resetPasswordRequest({ email, ...proof, newPassword });
+    if ('error' in r) return { ok: false, error: r.error };
+    setUser(asUser(r));
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'No connection to the server' };
+  }
 }

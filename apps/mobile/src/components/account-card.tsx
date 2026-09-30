@@ -5,10 +5,10 @@ import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'rea
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn } from '@/design/ui';
-import { changePassword, deleteAccount, login, logout, register, useUser } from '@/game/user';
+import { changePassword, deleteAccount, login, logout, register, resetPassword, sendResetCode, useUser } from '@/game/user';
 import { refreshWallet } from '@/game/wallet';
 
-type Mode = 'view' | 'register' | 'login' | 'password' | 'delete' | 'deleted';
+type Mode = 'view' | 'register' | 'login' | 'password' | 'delete' | 'deleted' | 'forgot';
 
 function Field({ label, error, ...input }: TextInputProps & { label: string; error?: string }) {
   return (
@@ -37,7 +37,10 @@ export function AccountCard() {
   const user = useUser();
   const registered = !!user?.email;
   const [mode, setMode] = useState<Mode>('view');
-  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', newPassword: '' });
+  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', newPassword: '', code: '' });
+  // Forgotten password: 'email' → code sent → 'code'; or the backup code instead of an emailed one.
+  const [resetStep, setResetStep] = useState<'email' | 'code'>('email');
+  const [useBackup, setUseBackup] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +78,109 @@ export function AccountCard() {
       setBusy(false);
     }
   };
+
+  const forgot = async () => {
+    setBusy(true);
+    setMessage(null);
+    setErrors({});
+    try {
+      if (resetStep === 'email' && !useBackup) {
+        if (!form.email.trim()) return setErrors({ email: 'Enter your email' });
+        const r = await sendResetCode(form.email);
+        if (!r.ok) return setMessage(r.error ?? 'Could not send the code');
+        setResetStep('code');
+        return;
+      }
+      if (form.newPassword.length < PASSWORD_MIN) return setErrors({ newPassword: `At least ${PASSWORD_MIN} characters` });
+      const r = await resetPassword(
+        form.email,
+        useBackup ? { backupCode: form.code.trim() } : { code: form.code },
+        form.newPassword,
+      );
+      if (!r.ok) return setMessage(r.error ?? 'Could not set the password');
+      setMode('view');
+      setMessage('New password set – you are logged in.');
+      await refreshWallet();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (mode === 'forgot') {
+    const askCode = resetStep === 'code' || useBackup;
+    return (
+      <View style={styles.card}>
+        <Txt v="h16">Forgot your password?</Txt>
+        <Txt v="cap" color={C.textMuted}>
+          {useBackup
+            ? 'Enter your email, the backup code you saved from Profile, and a new password.'
+            : resetStep === 'email'
+              ? "We'll email you a 6-digit code (valid for 15 minutes)."
+              : `If ${form.email.trim()} has an account, a code is on its way. Enter it with a new password.`}
+        </Txt>
+        <Field
+          label="Email"
+          value={form.email}
+          onChangeText={set('email')}
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          editable={!askCode || useBackup}
+          error={errors.email}
+        />
+        {askCode && (
+          <>
+            <Field
+              label={useBackup ? 'Backup code' : 'Code from the email'}
+              value={form.code}
+              onChangeText={set('code')}
+              autoCapitalize="none"
+              keyboardType={useBackup ? 'default' : 'number-pad'}
+              maxLength={useBackup ? 64 : 6}
+            />
+            <Field
+              label="New password"
+              value={form.newPassword}
+              onChangeText={set('newPassword')}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="new-password"
+              error={errors.newPassword}
+            />
+          </>
+        )}
+        {message && (
+          <Txt v="cap" color={C.red}>
+            {message}
+          </Txt>
+        )}
+        <View style={styles.row}>
+          <Btn kind="dark" label="CANCEL" height={44} labelType="capUpper" onPress={() => setMode('login')} style={styles.flex} />
+          <Btn
+            kind="blue"
+            label={busy ? '…' : askCode ? 'SET PASSWORD' : 'SEND CODE'}
+            height={44}
+            labelType="capUpper"
+            disabled={busy}
+            onPress={forgot}
+            style={styles.flex}
+          />
+        </View>
+        <Pressable
+          onPress={() => {
+            setUseBackup((b) => !b);
+            setMessage(null);
+          }}
+          accessibilityRole="button"
+          hitSlop={8}
+          style={styles.deleteLink}>
+          <Txt v="cap" color={C.blueLight}>
+            {useBackup ? 'Get a code by email instead' : 'Use my backup code instead'}
+          </Txt>
+        </Pressable>
+      </View>
+    );
+  }
 
   const confirmDelete = async () => {
     setBusy(true);
@@ -245,9 +351,27 @@ export function AccountCard() {
         />
       )}
       {mode === 'login' && (
-        <Txt v="cap" color={C.textMuted}>
-          This device switches to that account. Coins of the current guest account stay with the guest account.
-        </Txt>
+        <>
+          <Txt v="cap" color={C.textMuted}>
+            This device switches to that account. Coins of the current guest account stay with the guest account.
+          </Txt>
+          <Pressable
+            onPress={() => {
+              setMode('forgot');
+              setResetStep('email');
+              setUseBackup(false);
+              setMessage(null);
+              setErrors({});
+              setForm((f) => ({ ...f, code: '', newPassword: '' }));
+            }}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={{ alignSelf: 'flex-start' }}>
+            <Txt v="cap" color={C.blueLight}>
+              Forgot password?
+            </Txt>
+          </Pressable>
+        </>
       )}
       {message && (
         <Txt v="cap" color={C.red}>

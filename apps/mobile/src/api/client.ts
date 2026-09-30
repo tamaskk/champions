@@ -258,6 +258,12 @@ export const loginAccount = (body: LoginRequest) => postJSON<AuthProfile | { err
 export const fetchProfile = (userId: string) => postJSON<AuthProfile>('/api/auth/me', { userId });
 export const changeAccountPassword = (userId: string, oldPassword: string, newPassword: string) =>
   postJSON<{ ok: boolean; error?: string }>('/api/auth/password', { userId, oldPassword, newPassword });
+/** Emails a 6-digit code to set a new password. */
+export const requestPasswordReset = (email: string) =>
+  postJSON<{ ok: boolean; error?: string }>('/api/auth/forgot', { email });
+/** New password with the emailed code or the account's backup code; logs in on success. */
+export const resetPasswordRequest = (body: { email: string; code?: string; backupCode?: string; newPassword: string }) =>
+  postJSON<AuthProfile | { error: string }>('/api/auth/reset', body);
 /** Deletes the account and all its data on the server (password required for registered accounts). */
 export const deleteAccountRequest = (userId: string, password?: string) =>
   postJSON<{ ok: boolean; error?: string }>('/api/auth/delete', { userId, password });

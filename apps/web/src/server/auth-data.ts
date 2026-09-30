@@ -8,11 +8,12 @@ import {
   type LoginRequest,
   type RegisterRequest,
 } from "@champion/shared";
-import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomInt, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
 import { coinLedger, dailyScores, h2hTickets, miniLeagues, savedSquads, users, wallets, type UserDoc } from "./db";
 import { BadRequest, userOf } from "./leaderboard-data";
+import { emailConfigured, sendEmail } from "./mailer";
 
 /**
  * Email + password accounts on top of the guest users (see packages/shared/src/auth.ts).
@@ -171,4 +172,97 @@ export async function deleteAccount(body: { userId?: unknown; password?: string 
   ]);
   await (await users()).deleteOne({ userId });
   return { ok: true };
+}
+
+// ---- Forgotten password: a 6-digit code by email, or the account's backup code.
+
+const RESET_MINUTES = 15;
+const RESET_MAX_TRIES = 5;
+/** At most one email per address this often. */
+const RESET_RESEND_SECONDS = 60;
+
+const resetHash = (userId: string, code: string) => createHash("sha256").update(`${userId}:${code}`).digest("hex");
+
+/**
+ * Emails a 6-digit reset code to a registered address. The answer is the same whether or not the
+ * address has an account (don't reveal which accounts exist), except when email isn't set up.
+ */
+export async function requestPasswordReset(body: { email?: string } | null): Promise<{ ok: boolean; error?: string }> {
+  const email = normalizeEmail(body?.email ?? "");
+  if (!email) return { ok: false, error: "Enter your email" };
+  if (!emailConfigured() && process.env.NODE_ENV === "production") {
+    return { ok: false, error: "Email codes aren't available yet – use your backup code instead" };
+  }
+  const col = await users();
+  const user = await col.findOne({ email });
+  if (!user?.passwordHash) return { ok: true };
+  if (user.resetSentAt && Date.now() - user.resetSentAt.getTime() < RESET_RESEND_SECONDS * 1000) return { ok: true };
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await col.updateOne(
+    { userId: user.userId },
+    {
+      $set: {
+        resetCodeHash: resetHash(user.userId, code),
+        resetExpires: new Date(Date.now() + RESET_MINUTES * 60_000),
+        resetAttempts: 0,
+        resetSentAt: new Date(),
+      },
+    },
+  );
+  await sendEmail(
+    email,
+    `Your Spinvincible code: ${code}`,
+    `Your code to set a new Spinvincible password is ${code}.\n\nIt works for ${RESET_MINUTES} minutes. If you didn't ask for it, ignore this email – your password stays the same.`,
+  );
+  return { ok: true };
+}
+
+async function setNewPassword(userId: string, newPassword: string) {
+  await (await users()).updateOne(
+    { userId },
+    {
+      $set: {
+        passwordHash: await hashPassword(newPassword),
+        failedLogins: 0,
+        lockedUntil: null,
+        resetCodeHash: null,
+        resetExpires: null,
+        resetAttempts: 0,
+      },
+    },
+  );
+}
+
+/**
+ * Sets a new password with the emailed code, or with the account's backup code (the userId the app
+ * lets you save under Profile). Returns the profile, so the app is logged in straight away.
+ */
+export async function resetPassword(
+  body: { email?: string; code?: string; backupCode?: string; newPassword?: string } | null,
+): Promise<AuthProfile | { error: string }> {
+  const email = normalizeEmail(body?.email ?? "");
+  const newPassword = body?.newPassword ?? "";
+  if (newPassword.length < PASSWORD_MIN) return { error: `New password: at least ${PASSWORD_MIN} characters` };
+  const col = await users();
+  const user = email ? await col.findOne({ email }) : null;
+  const invalid = { error: "That code is wrong or has expired" };
+  if (!user?.passwordHash) return invalid;
+
+  const backup = (body?.backupCode ?? "").trim();
+  if (backup) {
+    const a = Buffer.from(backup);
+    const b = Buffer.from(user.userId);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return { error: "That backup code doesn't belong to this email" };
+  } else {
+    const code = (body?.code ?? "").replace(/\D/g, "");
+    if (!user.resetCodeHash || !user.resetExpires || user.resetExpires < new Date()) return invalid;
+    if ((user.resetAttempts ?? 0) >= RESET_MAX_TRIES) return { error: "Too many tries – ask for a new code" };
+    const ok = code.length === 6 && timingSafeEqual(Buffer.from(resetHash(user.userId, code)), Buffer.from(user.resetCodeHash));
+    if (!ok) {
+      await col.updateOne({ userId: user.userId }, { $inc: { resetAttempts: 1 } });
+      return invalid;
+    }
+  }
+  await setNewPassword(user.userId, newPassword);
+  return profileOf(user);
 }

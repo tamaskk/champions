@@ -46,6 +46,11 @@ export type UserDoc = {
   /** Failed logins in a row, and a lock after too many. */
   failedLogins?: number;
   lockedUntil?: Date | null;
+  /** Password reset: hash of the emailed 6-digit code, when it expires, wrong tries, when it was sent. */
+  resetCodeHash?: string | null;
+  resetExpires?: Date | null;
+  resetAttempts?: number;
+  resetSentAt?: Date | null;
 };
 
 /** Coins and what they bought. Balance only changes together with a ledger entry (transaction). */

@@ -4,6 +4,8 @@ import type { RefObject } from 'react';
 import { Platform, Share, type View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
+import { track } from '@/game/analytics';
+
 /**
  * Sharing: the system share sheet with text (emoji summaries, links), and a view captured as an
  * image (the squad card).
@@ -16,6 +18,7 @@ export async function shareText(message: string): Promise<'shared' | 'copied' | 
     try {
       if (nav?.share) {
         await nav.share({ text: message });
+        track('share');
         return 'shared';
       }
       await nav?.clipboard?.writeText(message);
@@ -25,7 +28,8 @@ export async function shareText(message: string): Promise<'shared' | 'copied' | 
     }
   }
   try {
-    await Share.share({ message });
+    const r = await Share.share({ message });
+    if (r.action === Share.sharedAction) track('share');
     return 'shared';
   } catch {
     return 'failed';
@@ -43,11 +47,13 @@ export async function shareImage(view: RefObject<View | null>, title = 'My Spinv
       a.href = uri;
       a.download = 'spinvincible-xi.png';
       a.click();
+      track('share');
       return 'shared';
     }
     const uri = await captureRef(view, { format: 'png', quality: 1, result: 'tmpfile' });
     if (!(await Sharing.isAvailableAsync())) return 'failed';
     await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: title, UTI: 'public.png' });
+    track('share');
     return 'shared';
   } catch {
     return 'failed';

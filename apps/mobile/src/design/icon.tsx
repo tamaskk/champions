@@ -5,6 +5,7 @@ import { C, F } from './tokens';
 /** Material Symbols code points of the icons the design uses. */
 const GLYPHS = {
   bolt: 59915,
+  error: 57344,
   casino: 60224,
   sports_soccer: 59951,
   explore: 59514,

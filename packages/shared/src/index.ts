@@ -17,3 +17,4 @@ export * from './economy';
 export * from './auth';
 export * from './mini-leagues';
 export * from './play';
+export * from './analytics';

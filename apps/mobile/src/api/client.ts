@@ -34,6 +34,8 @@ import {
   type PlayRequest,
   type PlayResponse,
   type SecondChanceResponse,
+  type CrashReport,
+  type EventsRequest,
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
@@ -306,3 +308,16 @@ export async function fetchSquadByCode(league: League, decade: number, club: str
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
+
+/** Anonymous analytics / crash reports: no auth header, so they are never tied to the account. */
+async function postAnonymous(path: string, body: unknown): Promise<void> {
+  const res = await fetch(`${apiBaseUrl()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+}
+
+export const sendEvents = (body: EventsRequest) => postAnonymous('/api/events', body);
+export const sendCrash = (body: CrashReport) => postAnonymous('/api/crashes', body);

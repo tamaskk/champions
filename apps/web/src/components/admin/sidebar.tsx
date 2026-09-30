@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 import { adminLogout } from "@/app/admin-login/actions";
 
-import { CalendarIcon, DownloadIcon, FileIcon, GridIcon, ShieldIcon, TrophyIcon, UploadIcon, UsersIcon } from "./icons";
+import { AlertIcon, CalendarIcon, DownloadIcon, FileIcon, GridIcon, ShieldIcon, TrophyIcon, UploadIcon, UsersIcon } from "./icons";
 
 const NAV = [
   { href: "/admin", label: "Dashboard", icon: GridIcon },
@@ -16,6 +16,8 @@ const NAV = [
   { href: "/admin/daily", label: "Daily challenges", icon: CalendarIcon },
   { href: "/admin/coins", label: "Coins", icon: TrophyIcon },
   { href: "/admin/waitlist", label: "Waitlist", icon: UsersIcon },
+  { href: "/admin/analytics", label: "Analytics", icon: GridIcon },
+  { href: "/admin/crashes", label: "Crashes", icon: AlertIcon },
 ] as const;
 
 export function Sidebar() {

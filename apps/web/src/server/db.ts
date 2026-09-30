@@ -158,6 +158,30 @@ export type WaitlistDoc = {
   locale: string | null;
 };
 
+/** One anonymous analytics event from the app (see @champion/shared analytics). */
+export type EventDoc = {
+  install: string;
+  event: string;
+  props: Record<string, string>;
+  /** When it happened on the device (clamped to the receive time). */
+  at: Date;
+  /** UTC day of `at`, "2026-09-30". */
+  day: string;
+  receivedAt: Date;
+};
+
+/** A JavaScript error reported by the app. */
+export type CrashDoc = {
+  install: string;
+  message: string;
+  stack: string | null;
+  where: string | null;
+  fatal: boolean;
+  platform: string | null;
+  version: string | null;
+  createdAt: Date;
+};
+
 const globalForMongo = globalThis as unknown as { mongo?: Promise<Db> };
 
 async function connect(uri: string): Promise<Db> {
@@ -203,6 +227,15 @@ async function connect(uri: string): Promise<Db> {
   await db
     .collection<MiniLeagueDoc>("miniLeagues")
     .createIndexes([{ key: { code: 1 }, unique: true }, { key: { members: 1 } }]);
+  // Analytics and crash reports expire after ANALYTICS_LIMITS.keepDays (180).
+  await db.collection<EventDoc>("events").createIndexes([
+    { key: { receivedAt: 1 }, expireAfterSeconds: 180 * 86400 },
+    { key: { day: 1, event: 1 } },
+  ]);
+  await db.collection<CrashDoc>("crashes").createIndexes([
+    { key: { createdAt: 1 }, expireAfterSeconds: 180 * 86400 },
+    { key: { message: 1 } },
+  ]);
   return db;
 }
 
@@ -273,6 +306,14 @@ export async function miniLeagues(): Promise<Collection<MiniLeagueDoc>> {
 }
 
 /** The Mongo client, for multi-document transactions (wallet + ledger). */
+export async function events(): Promise<Collection<EventDoc>> {
+  return (await getDb()).collection<EventDoc>("events");
+}
+
+export async function crashes(): Promise<Collection<CrashDoc>> {
+  return (await getDb()).collection<CrashDoc>("crashes");
+}
+
 export async function mongoClient() {
   return (await getDb()).client;
 }

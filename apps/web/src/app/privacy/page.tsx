@@ -59,6 +59,14 @@ export default function PrivacyPage() {
           service and keep it secure. Basis: our legitimate interest in running a secure service (Art. 6(1)(f)).
         </p>
         <p>
+          <strong>Usage statistics and error reports.</strong> The app sends us anonymous events (app opened, draft
+          started or completed, tournament finished and its mode, something shared) and, when the app hits an error, the
+          error message and where in the code it happened. They carry a random installation id created by the app – not
+          your account, username or IP address – plus the platform (iOS/Android) and app version. We use them only to see
+          which parts of the game work and to fix bugs; no third party receives them. Basis: our legitimate interest in
+          improving the game and keeping it stable (Art. 6(1)(f)).
+        </p>
+        <p>
           <strong>On your device.</strong> The app keeps your progress, settings, records and drafts in progress in its
           own storage on your device. It does not read other data on your phone.
         </p>
@@ -66,7 +74,7 @@ export default function PrivacyPage() {
 
       <Section title="3. What we don't do">
         <ul>
-          <li>No advertising or analytics SDKs, no tracking across apps or websites, no selling or renting of data.</li>
+          <li>No advertising or third-party analytics SDKs, no tracking across apps or websites, no selling or renting of data.</li>
           <li>No photos, contacts, location or microphone data.</li>
           <li>No automated decisions with legal or similarly significant effects on you.</li>
         </ul>
@@ -91,6 +99,7 @@ export default function PrivacyPage() {
           <li>Account and game data: until you delete your account (in the app: Profile → Delete account).</li>
           <li>Waitlist email: until the launch announcement is sent, or earlier if you ask us to remove it.</li>
           <li>Password-reset codes: 15 minutes.</li>
+          <li>Usage statistics and error reports: 180 days.</li>
           <li>Server logs: kept by our hosting provider for a short period for security.</li>
           <li>Purchase records: as long as tax and accounting law requires.</li>
         </ul>

@@ -9,6 +9,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 import { ProgressToast } from '@/components/progress-toast';
 import { C, FONT_ASSETS } from '@/design/tokens';
+import { startAnalytics } from '@/game/analytics';
 import { initWallet } from '@/game/wallet';
 
 SplashScreen.preventAutoHideAsync();
@@ -16,11 +17,14 @@ SplashScreen.preventAutoHideAsync();
 // The design is dark only.
 const THEME = { ...DarkTheme, colors: { ...DarkTheme.colors, background: C.bg, card: C.surface, text: C.text } };
 
+export { ErrorBoundary } from '@/components/error-screen';
+
 export default function TabLayout() {
   const [fontsLoaded] = useFonts(FONT_ASSETS);
   // Coins: load the wallet and collect the daily login bonus once per app start.
   useEffect(() => {
     void initWallet();
+    startAnalytics();
   }, []);
   return (
     <ThemeProvider value={THEME}>

@@ -33,6 +33,8 @@ export const RATE_RULES: Record<string, Rule> = {
   "waitlist": { ip: { limit: 5, windowSec: HOUR } },
   "admin-login": { ip: { limit: 10, windowSec: 15 * MIN } },
   "GET /api/search": { ip: { limit: 120, windowSec: MIN } },
+  "POST /api/events": { ip: { limit: 300, windowSec: HOUR } },
+  "POST /api/crashes": { ip: { limit: 60, windowSec: HOUR } },
   // Writes and the expensive ones: per user.
   "POST /api/squads": { user: { limit: 40, windowSec: HOUR } },
   "POST /api/squads/:id/play": { user: { limit: 60, windowSec: HOUR } },

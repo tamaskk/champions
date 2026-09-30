@@ -4,6 +4,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { h2hGhost, h2hQueue, h2hTicket } from '@/api/client';
+import { track } from '@/game/analytics';
 import { MatchPlay, type Played } from '@/components/match-play';
 import { TournamentShell } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
@@ -102,6 +103,11 @@ export function H2HMatch({
   };
 
   const ticket = search.status === 'matched' ? search.ticket : null;
+  // Analytics: one finished head-to-head per matched ticket.
+  const matchedId = ticket?.ticketId;
+  useEffect(() => {
+    if (matchedId) track('tournament_done', { mode: 'h2h' });
+  }, [matchedId]);
   const oppName = ticket ? `@${ticket.opponent.username}` : 'Opponent';
   const left =
     search.status === 'searching' ? Math.max(0, H2H_WAIT_SECONDS - Math.floor((now - search.since) / 1000)) : 0;

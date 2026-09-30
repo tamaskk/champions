@@ -1,6 +1,7 @@
 import type { PlayChoice, PlayRequest, PlayResponse, SaveSquadRequest, SquadResult } from '@champion/shared';
 import { useSyncExternalStore } from 'react';
 
+import { track } from '@/game/analytics';
 import { listSquadRequest, playTournament, saveSquad, secondChanceRequest, squadShareUrl } from '@/api/client';
 
 import { recordProgress, teamName } from './progress';
@@ -76,7 +77,9 @@ export async function ensureOnlineSquad(): Promise<string> {
 export async function playOnline(choice: PlayChoice): Promise<PlayResponse> {
   const id = await ensureOnlineSquad();
   const user = await ensureUser();
-  return playTournament(id, { ...choice, userId: user.userId, teamName: teamName() } as PlayRequest);
+  const result = await playTournament(id, { ...choice, userId: user.userId, teamName: teamName() } as PlayRequest);
+  track('tournament_done', { mode: choice.mode });
+  return result;
 }
 
 /** Uses a Second chance for this squad on the server (it takes the item from the wallet). */

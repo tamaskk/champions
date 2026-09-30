@@ -48,6 +48,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
 import { Btn, Chip, SHADOW_SM, ScreenHeader } from '@/design/ui';
+import { track } from '@/game/analytics';
 import { autofillBench, autofillLineup } from '@/game/autofill';
 import { consumeItem, useWallet } from '@/game/wallet';
 import { usePendingChallenge } from '@/game/challenge';
@@ -237,6 +238,7 @@ export default function HomeScreen() {
     keepFormation: Formation | null = null,
   ) => {
     gameId.current += 1;
+    if (!practiceTry) track('draft_start', { mode: d ? 'daily' : 'arcade' });
     setPractice(practiceTry);
     setFreeRespinsUsed(0);
     setBoost(null);
@@ -380,6 +382,7 @@ export default function HomeScreen() {
     if (!formation) return;
     setSelected(null);
     if (squadId === null) {
+      track('draft_done', { mode: daily ? 'daily' : 'arcade' });
       const s = squadSummary(formation, lineupPlayers);
       const names = placed
         .slice()

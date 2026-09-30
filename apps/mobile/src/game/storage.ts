@@ -45,6 +45,9 @@ const DEVICE_FILES = [
   'league-season',
   'legends',
   'notifications',
+  'install',
+  'events-pending',
+  'crash-pending',
 ];
 
 /** Erases the game's data on this device; the app starts fresh on its next launch. */

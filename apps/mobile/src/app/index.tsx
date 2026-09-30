@@ -993,6 +993,7 @@ export default function HomeScreen() {
           chemistryGain={chemistryGain}
           teamChemistry={chemistry?.team ?? 0}
           rules={dailyRules ?? casualRules}
+          squad={formation ? { formation, lineup: lineupPlayers } : undefined}
         />
       )}
 

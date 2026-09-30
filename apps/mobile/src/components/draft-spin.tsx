@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fetchClubs, fetchSquad, toDraftPlayer } from '@/api/client';
 import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
+import { SquadPeek } from '@/components/squad-peek';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, R, alpha } from '@/design/tokens';
@@ -77,6 +78,8 @@ type Props = {
   teamChemistry: number;
   /** Daily challenge: allowed decades and leagues, seeded reels, limited re-spins. */
   rules?: DraftRules;
+  /** Your XI so far, shown while you hold a player (or the "Your XI" button). */
+  squad?: { formation: string; lineup: readonly (DraftPlayer | null)[] };
 };
 
 export type DraftRules = {
@@ -91,7 +94,16 @@ export type DraftRules = {
 };
 
 /** "Live Draft Session": three reels (decade, league, club), then that club's squad to draft from. */
-export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemistryGain, teamChemistry, rules }: Props) {
+export function DraftSpin({
+  openSpots,
+  benchOpen = false,
+  taken,
+  onPick,
+  chemistryGain,
+  teamChemistry,
+  rules,
+  squad,
+}: Props) {
   const insets = useSafeAreaInsets();
   const decadeItems = useMemo(
     () =>
@@ -127,6 +139,8 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
   const clubRequest = useRef(0);
   const [tab, setTab] = useState<PlayerRole | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
+  // Holding a player (or the "Your XI" button) peeks at your XI; releasing goes back to the list.
+  const [peek, setPeek] = useState<{ player: DraftPlayer | null } | null>(null);
   const [chamberWidth, setChamberWidth] = useState(0);
 
   // The reels render once the chamber has been measured; then the first one starts.
@@ -284,6 +298,8 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
     .slice()
     .sort((a, b) => Number(canPick(b)) - Number(canPick(a)) || (b.rating ?? 0) - (a.rating ?? 0));
   const chosenPlayer = players?.find((p) => p.id === chosen && canPick(p)) ?? null;
+  const showList = !!players && (playerSource === 'real' || playerSource === 'dummy') && !!league && !!club && !!decade;
+  const draft = (p: DraftPlayer) => league && club && decade && onPick({ player: p, league, club, decade: decadeOf(decade) });
 
   return (
     <View style={styles.screen}>
@@ -295,7 +311,7 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + HEADER_HEIGHT + 4, paddingBottom: insets.bottom + 32 },
+          { paddingTop: insets.top + HEADER_HEIGHT + 4, paddingBottom: insets.bottom + (showList ? 120 : 32) },
         ]}
         showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
@@ -500,8 +516,13 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
                   return (
                     <Pressable
                       key={item.id}
-                      onPress={() => setChosen(item.id)}
+                      // First tap selects, a second tap on the same player drafts him.
+                      onPress={() => (selected ? draft(item) : setChosen(item.id))}
+                      onLongPress={() => squad && setPeek({ player: item })}
+                      onPressOut={() => setPeek(null)}
+                      delayLongPress={280}
                       disabled={!ok}
+                      accessibilityHint={selected ? 'Tap again to draft him' : 'Tap to select, hold to see your XI'}
                       accessibilityRole="button"
                       accessibilityState={{ selected, disabled: !ok }}
                       style={[styles.player, selected && styles.playerSelected, !ok && styles.playerOff]}>
@@ -579,28 +600,10 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
                 })}
               </View>
 
-              {/* Draft CTA */}
-              <View style={[styles.gap8, { paddingTop: 8 }]}>
-                <Btn
-                  kind="green"
-                  icon="check_circle"
-                  label={chosenPlayer ? `Draft ${chosenPlayer.name}` : 'Select a player'}
-                  disabled={!chosenPlayer}
-                  onPress={() =>
-                    chosenPlayer && onPick({ player: chosenPlayer, league, club, decade: decadeOf(decade) })
-                  }>
-                  {chosenPlayer?.rating !== undefined && (
-                    <View style={styles.ovrPill}>
-                      <Txt v="bodyBold" color={C.onGreenStrong} style={{ fontSize: 11, lineHeight: 18 }}>
-                        {formatRating(chosenPlayer.rating)} OVR
-                      </Txt>
-                    </View>
-                  )}
-                </Btn>
-                <Txt v="body" color={C.textMuted} style={styles.center}>
-                  Green chemistry shows what he adds on his best open spot.
-                </Txt>
-              </View>
+              <Txt v="body" color={C.textMuted} style={styles.center}>
+                Tap a player twice to draft him · hold one to see your XI. Green chemistry shows what he adds on his
+                best open spot.
+              </Txt>
             </Animated.View>
           )}
         </View>
@@ -611,6 +614,42 @@ export function DraftSpin({ openSpots, benchOpen = false, taken, onPick, chemist
           <Stat icon="deployed_code" label="OPEN SPOTS" value={`${openSpots.length} Left`} color={C.green} />
         </View>
       </ScrollView>
+
+      {/* Draft button: stays at the bottom while the squad list scrolls */}
+      {showList && (
+        <Animated.View entering={FadeIn.duration(200)} style={[styles.dock, { paddingBottom: insets.bottom + 12 }]}>
+          {squad && (
+            <Pressable
+              onPressIn={() => setPeek({ player: chosenPlayer })}
+              onPressOut={() => setPeek(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Hold to see your XI"
+              style={({ pressed }) => [styles.peekBtn, pressed && styles.pressed]}>
+              <Icon name="groups" size={18} color={C.text} />
+              <Txt v="tinyBold" color={C.textMuted}>
+                HOLD
+              </Txt>
+            </Pressable>
+          )}
+          <Btn
+            kind="green"
+            icon="check_circle"
+            label={chosenPlayer ? `Draft ${chosenPlayer.name}` : 'Select a player'}
+            disabled={!chosenPlayer}
+            onPress={() => chosenPlayer && draft(chosenPlayer)}
+            style={styles.flex}>
+            {chosenPlayer?.rating !== undefined && (
+              <View style={styles.ovrPill}>
+                <Txt v="bodyBold" color={C.onGreenStrong} style={{ fontSize: 11, lineHeight: 18 }}>
+                  {formatRating(chosenPlayer.rating)} OVR
+                </Txt>
+              </View>
+            )}
+          </Btn>
+        </Animated.View>
+      )}
+
+      {peek && squad && <SquadPeek formation={squad.formation} lineup={squad.lineup} candidate={peek.player} />}
     </View>
   );
 }
@@ -670,6 +709,29 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     gap: 16,
+  },
+  dock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    backgroundColor: alpha(C.bg, 0.96),
+    borderTopWidth: 1,
+    borderTopColor: alpha('#ffffff', 0.06),
+  },
+  peekBtn: {
+    width: 56,
+    height: 52,
+    borderRadius: R.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    backgroundColor: C.surface3,
   },
   card: {
     gap: 16,

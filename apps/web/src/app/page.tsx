@@ -14,9 +14,6 @@ import { waitlistCount } from "@/server/waitlist-data";
 // The waitlist count on the page refreshes every few minutes.
 export const revalidate = 300;
 
-/** Footer background loop (external CDN; self-host under /public before launch). */
-const FOOTER_VIDEO = "https://cdn.sceneai.art/Hero%20Section%20Video/5a6cf9a9-9f93-4e44-88f3-cf666065daf7.mp4";
-
 export const metadata: Metadata = {
   title: "Spinvincible – spin, draft, go unbeaten",
   description:
@@ -461,114 +458,80 @@ function FinalCall() {
 
 function Footer() {
   return (
-    <footer className="relative isolate overflow-hidden pt-28">
-      {/* Background: looping video under a 40% black veil (hidden with reduced motion). */}
-      <video
-        className="lp-footer-video absolute inset-0 -z-20 h-full w-full object-cover"
-        src={FOOTER_VIDEO}
-        autoPlay
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        aria-hidden
-      />
-      <div className="absolute inset-0 -z-10 bg-black/40" />
-      {/* Blends the video into the page background above it (no hard edge). */}
-      <div className="absolute inset-x-0 top-0 -z-10 h-64 bg-gradient-to-b from-[#121a24] via-[#121a24]/70 to-transparent" />
-
-      <div className="flex justify-center px-5">
-        <a
-          href="#join"
-          className="lp-ring-border inline-flex items-center gap-4 rounded-full py-2.5 pr-2.5 pl-7 text-[15px] font-medium tracking-tight text-white"
-        >
-          Join the waitlist
-          <span className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-[#ff8a00] to-[#ea580c] text-black">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-              <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-        </a>
-      </div>
-
-      {/* The footer itself on a frosted glass panel over the video. */}
-      <div className="mx-auto mt-[3.25rem] max-w-7xl px-1.5 sm:px-6">
-        <div className="rounded-[32px] border border-white/[0.12] bg-white/[0.05] px-6 py-10 shadow-[0_30px_80px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-2xl sm:px-10">
-          <div className="grid gap-10 md:grid-cols-[1.4fr_1fr]">
-            <div>
-              <a href="#" className="flex items-center gap-2.5" aria-label="Spinvincible">
-                <Image src="/logo.png" alt="" width={28} height={28} className="rounded-lg" />
-                <span className="text-[15px] font-medium">Spinvincible</span>
-              </a>
-              <p className="mt-5 text-2xl leading-snug font-light">
-                An all-time XI,
-                <br />
-                <Accent>one spin at a time.</Accent>
-              </p>
-              <div className="mt-6">
-                <WaitlistForm source="footer" />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-6 text-sm">
-              <div>
-                <p className="text-white/85">Game</p>
-                <ul className="mt-3 space-y-2 text-white/50">
-                  <li>
-                    <a href="#features" className="hover:text-white">
-                      Features
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#how" className="hover:text-white">
-                      How it works
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#modes" className="hover:text-white">
-                      Modes
-                    </a>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <p className="text-white/85">Launch</p>
-                <ul className="mt-3 space-y-2 text-white/50">
-                  <li>iOS – coming soon</li>
-                  <li>Android – coming soon</li>
-                  <li>
-                    <a href="#join" className="hover:text-white">
-                      Join the waitlist
-                    </a>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <p className="text-white/85">Legal</p>
-                <ul className="mt-3 space-y-2 text-white/50">
-                  <li>
-                    <a href="/privacy" className="hover:text-white">
-                      Privacy
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/terms" className="hover:text-white">
-                      Terms
-                    </a>
-                  </li>
-                  <li>
-                    <a href="/support" className="hover:text-white">
-                      Support
-                    </a>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          <div className="mt-12 flex flex-col gap-2 border-t border-white/[0.1] pt-6 text-xs text-white/50 sm:flex-row sm:justify-between">
-            <p>© {new Date().getFullYear()} Spinvincible</p>
-            <p>{DISCLAIMER_SHORT}</p>
+    <footer className="relative pt-16">
+      <div className="mx-auto grid max-w-6xl gap-10 px-5 sm:px-8 md:grid-cols-[1.4fr_1fr]">
+        <div>
+          <a href="#" className="flex items-center gap-2.5" aria-label="Spinvincible">
+            <Image src="/logo.png" alt="" width={28} height={28} className="rounded-lg" />
+            <span className="text-[15px] font-medium">Spinvincible</span>
+          </a>
+          <p className="mt-5 text-2xl leading-snug font-light">
+            An all-time XI,
+            <br />
+            <Accent>one spin at a time.</Accent>
+          </p>
+          <div className="mt-6">
+            <WaitlistForm source="footer" />
           </div>
         </div>
+        <div className="grid grid-cols-3 gap-6 text-sm">
+          <div>
+            <p className="text-white/85">Game</p>
+            <ul className="mt-3 space-y-2 text-white/50">
+              <li>
+                <a href="#features" className="hover:text-white">
+                  Features
+                </a>
+              </li>
+              <li>
+                <a href="#how" className="hover:text-white">
+                  How it works
+                </a>
+              </li>
+              <li>
+                <a href="#modes" className="hover:text-white">
+                  Modes
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-white/85">Launch</p>
+            <ul className="mt-3 space-y-2 text-white/50">
+              <li>iOS – coming soon</li>
+              <li>Android – coming soon</li>
+              <li>
+                <a href="#join" className="hover:text-white">
+                  Join the waitlist
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-white/85">Legal</p>
+            <ul className="mt-3 space-y-2 text-white/50">
+              <li>
+                <a href="/privacy" className="hover:text-white">
+                  Privacy
+                </a>
+              </li>
+              <li>
+                <a href="/terms" className="hover:text-white">
+                  Terms
+                </a>
+              </li>
+              <li>
+                <a href="/support" className="hover:text-white">
+                  Support
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto mt-14 flex max-w-6xl flex-col gap-2 border-t border-white/[0.08] px-5 pt-6 text-xs text-white/40 sm:flex-row sm:justify-between sm:px-8">
+        <p>© {new Date().getFullYear()} Spinvincible</p>
+        <p>{DISCLAIMER_SHORT}</p>
       </div>
       {/* The giant wordmark, cut off by the page edge */}
       <LetterReveal

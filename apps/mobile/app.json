@@ -21,11 +21,10 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.tamaskk.champion",
-      "permissions": [
+      "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -42,8 +41,7 @@
           "imageWidth": 200
         }
       ],
-      "expo-sharing",
-      "expo-audio"
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

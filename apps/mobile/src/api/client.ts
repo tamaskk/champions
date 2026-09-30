@@ -258,6 +258,9 @@ export const loginAccount = (body: LoginRequest) => postJSON<AuthProfile | { err
 export const fetchProfile = (userId: string) => postJSON<AuthProfile>('/api/auth/me', { userId });
 export const changeAccountPassword = (userId: string, oldPassword: string, newPassword: string) =>
   postJSON<{ ok: boolean; error?: string }>('/api/auth/password', { userId, oldPassword, newPassword });
+/** Deletes the account and all its data on the server (password required for registered accounts). */
+export const deleteAccountRequest = (userId: string, password?: string) =>
+  postJSON<{ ok: boolean; error?: string }>('/api/auth/delete', { userId, password });
 
 // ---- Search (Explore)
 

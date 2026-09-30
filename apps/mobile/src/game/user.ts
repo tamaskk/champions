@@ -2,9 +2,17 @@ import { useSyncExternalStore } from 'react';
 
 import type { AuthProfile, RegisterRequest } from '@champion/shared';
 
-import { changeAccountPassword, createUser, fetchProfile, fetchWallet, loginAccount, registerAccount } from '@/api/client';
+import {
+  changeAccountPassword,
+  createUser,
+  deleteAccountRequest,
+  fetchProfile,
+  fetchWallet,
+  loginAccount,
+  registerAccount,
+} from '@/api/client';
 
-import { loadJSON, saveJSON } from './storage';
+import { eraseDeviceData, loadJSON, saveJSON } from './storage';
 
 /**
  * Your online identity: a secret id and a generated username, created on first launch and kept
@@ -121,4 +129,21 @@ export async function changePassword(oldPassword: string, newPassword: string): 
   } catch {
     return { ok: false, error: 'No connection to the server' };
   }
+}
+
+/**
+ * Deletes the account on the server (coins, saved squads, scores, mini-leagues – everything) and
+ * erases the game's data on this device. Registered accounts confirm with their password.
+ */
+export async function deleteAccount(password?: string): Promise<AuthResult> {
+  if (!user) return { ok: false, error: 'No account on this device' };
+  try {
+    const r = await deleteAccountRequest(user.userId, password);
+    if (!r.ok) return { ok: false, error: r.error ?? 'Could not delete the account' };
+  } catch {
+    return { ok: false, error: 'No connection to the server' };
+  }
+  eraseDeviceData();
+  setUser(null);
+  return { ok: true };
 }

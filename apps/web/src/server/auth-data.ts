@@ -11,7 +11,7 @@ import {
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
-import { users, type UserDoc } from "./db";
+import { coinLedger, dailyScores, h2hTickets, miniLeagues, savedSquads, users, wallets, type UserDoc } from "./db";
 import { BadRequest, userOf } from "./leaderboard-data";
 
 /**
@@ -131,5 +131,44 @@ export async function changePassword(
   if (!(await checkPassword(body?.oldPassword ?? "", user.passwordHash))) return { ok: false, error: "Current password is wrong" };
   if ((body?.newPassword ?? "").length < PASSWORD_MIN) return { ok: false, error: `At least ${PASSWORD_MIN} characters` };
   await (await users()).updateOne({ userId: user.userId }, { $set: { passwordHash: await hashPassword(body!.newPassword!) } });
+  return { ok: true };
+}
+
+export type DeleteAccountResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Deletes an account and everything tied to it (App Store rule 5.1.1(v)): saved squads, daily
+ * scores, the wallet and its coin ledger, head-to-head tickets, mini-league memberships (the owner
+ * role passes on, a league left empty is deleted) and invite links. A registered account must
+ * confirm with its password; a guest's userId (the device's secret) is enough. The user record goes
+ * last, so a deletion that fails half-way can simply be retried.
+ */
+export async function deleteAccount(body: { userId?: unknown; password?: string } | null): Promise<DeleteAccountResult> {
+  const user = await userOf(body?.userId);
+  if (user.passwordHash && !(await checkPassword(body?.password ?? "", user.passwordHash))) {
+    return { ok: false, error: "Password is wrong" };
+  }
+  const userId = user.userId;
+
+  const leagues = await miniLeagues();
+  for (const league of await leagues.find({ members: userId }).toArray()) {
+    const rest = league.members.filter((m) => m !== userId);
+    if (rest.length === 0) await leagues.deleteOne({ _id: league._id });
+    else
+      await leagues.updateOne(
+        { _id: league._id },
+        { $pull: { members: userId }, $set: { ownerId: league.ownerId === userId ? rest[0]! : league.ownerId } },
+      );
+  }
+  await Promise.all([
+    (await savedSquads()).deleteMany({ userId }),
+    (await dailyScores()).deleteMany({ userId }),
+    (await h2hTickets()).deleteMany({ userId }),
+    (await coinLedger()).deleteMany({ userId }),
+    (await wallets()).deleteMany({ userId }),
+    // Friends this player invited keep their coins (and stay "invited"), without the link to this account.
+    (await wallets()).updateMany({ invitedBy: userId }, { $set: { invitedBy: "deleted-account" } }),
+  ]);
+  await (await users()).deleteOne({ userId });
   return { ok: true };
 }

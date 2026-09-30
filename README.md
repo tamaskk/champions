@@ -257,6 +257,7 @@ change goes into the coin ledger as "admin" with a note.
 | `POST /api/users`, `/api/squads`, `/api/h2h/*` | Guest users, leaderboard, head-to-head |
 | `POST /api/auth/register · login · me · password` | Email + password accounts |
 | `POST /api/wallet · wallet/claim · buy · use · invite · rename` | Coin wallet (server-side) |
+| `POST /api/auth/delete` | Deletes the account and all its data (password for registered accounts) |
 | `POST /api/daily/score`, `/api/leagues · leagues/create · join · leave · detail` | Official daily scores and mini-leagues |
 | `POST /api/iap/revenuecat` | Store purchase webhook |
 

@@ -1,14 +1,14 @@
 import { PASSWORD_MIN, validateRegistration } from '@champion/shared';
 import { useState } from 'react';
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Txt } from '@/design/text';
-import { C, R } from '@/design/tokens';
+import { C, R, alpha } from '@/design/tokens';
 import { Btn } from '@/design/ui';
-import { changePassword, login, logout, register, useUser } from '@/game/user';
+import { changePassword, deleteAccount, login, logout, register, useUser } from '@/game/user';
 import { refreshWallet } from '@/game/wallet';
 
-type Mode = 'view' | 'register' | 'login' | 'password';
+type Mode = 'view' | 'register' | 'login' | 'password' | 'delete' | 'deleted';
 
 function Field({ label, error, ...input }: TextInputProps & { label: string; error?: string }) {
   return (
@@ -76,6 +76,67 @@ export function AccountCard() {
     }
   };
 
+  const confirmDelete = async () => {
+    setBusy(true);
+    setMessage(null);
+    const r = await deleteAccount(registered ? form.password : undefined);
+    setBusy(false);
+    if (!r.ok) return setMessage(r.error ?? 'Could not delete the account');
+    setMode('deleted');
+  };
+
+  if (mode === 'deleted') {
+    return (
+      <View style={styles.card}>
+        <Txt v="h16">Account deleted</Txt>
+        <Txt v="body" color={C.textMuted}>
+          Your account and everything tied to it are gone: coins, saved squads, scores and mini-league places. Close
+          and reopen the app to start over with a fresh guest account.
+        </Txt>
+      </View>
+    );
+  }
+
+  if (mode === 'delete') {
+    return (
+      <View style={[styles.card, styles.danger]}>
+        <Txt v="h16">Delete your account?</Txt>
+        <Txt v="body" color={C.textMuted}>
+          This permanently deletes @{user?.username} and everything tied to it: your coins and anything bought with
+          them, saved squads on the leaderboard, Daily scores, mini-league places, and the game data on this device.
+          It can&apos;t be undone.
+        </Txt>
+        {registered && (
+          <Field
+            label="Password"
+            value={form.password}
+            onChangeText={set('password')}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="current-password"
+          />
+        )}
+        {message && (
+          <Txt v="cap" color={C.red}>
+            {message}
+          </Txt>
+        )}
+        <View style={styles.row}>
+          <Btn kind="dark" label="KEEP MY ACCOUNT" height={44} labelType="capUpper" onPress={() => setMode('view')} style={styles.flex} />
+          <Btn
+            kind="mid"
+            label={busy ? '…' : 'DELETE FOREVER'}
+            height={44}
+            labelType="capUpper"
+            disabled={busy || (registered && !form.password)}
+            onPress={confirmDelete}
+            style={styles.flex}
+          />
+        </View>
+      </View>
+    );
+  }
+
   if (mode === 'view') {
     return (
       <View style={styles.card}>
@@ -116,6 +177,17 @@ export function AccountCard() {
               <Btn kind="dark" label="LOG IN" height={44} labelType="capUpper" onPress={() => open('login')} style={styles.flex} />
             </View>
           </>
+        )}
+        {user && (
+          <Pressable
+            onPress={() => open('delete')}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({ pressed }) => [styles.deleteLink, pressed && { opacity: 0.6 }]}>
+            <Txt v="cap" color={C.red}>
+              Delete account
+            </Txt>
+          </Pressable>
         )}
       </View>
     );
@@ -201,6 +273,8 @@ export function AccountCard() {
 const styles = StyleSheet.create({
   card: { gap: 12, padding: 16, borderRadius: R.xl, backgroundColor: C.surface },
   row: { flexDirection: 'row', gap: 8 },
+  danger: { borderWidth: 1, borderColor: alpha(C.red, 0.4) },
+  deleteLink: { alignSelf: 'center', paddingTop: 4 },
   flex: { flex: 1 },
   field: { gap: 4 },
   input: {

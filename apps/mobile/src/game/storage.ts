@@ -33,3 +33,21 @@ export function saveJSON(name: string, data: unknown): void {
     // Not remembered this time.
   }
 }
+
+/** Everything the game keeps on this device (used when the account is deleted). */
+const DEVICE_FILES = [
+  'user',
+  'progress',
+  'records',
+  'daily',
+  'daily-draft',
+  'daily-match',
+  'league-season',
+  'legends',
+  'notifications',
+];
+
+/** Erases the game's data on this device; the app starts fresh on its next launch. */
+export function eraseDeviceData(): void {
+  for (const name of DEVICE_FILES) saveJSON(name, null);
+}

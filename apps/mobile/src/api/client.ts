@@ -8,7 +8,6 @@ import {
   type LegendsAvailability,
   type SaveSquadRequest,
   type SquadDetail,
-  type SquadResult,
   type UserResponse,
   LEAGUE_ADJECTIVES,
   decadeLabel,
@@ -32,6 +31,9 @@ import {
   type DailyScoreResponse,
   type MiniLeagueDetail,
   type MiniLeaguesResponse,
+  type PlayRequest,
+  type PlayResponse,
+  type SecondChanceResponse,
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
@@ -190,8 +192,15 @@ export const createUser = () => postJSON<UserResponse>('/api/users', {});
 /** Saves a squad on the leaderboard. */
 export const saveSquad = (body: SaveSquadRequest) => postJSON<{ id: string }>('/api/squads', body);
 /** Adds a tournament result to a saved squad. */
-export const postSquadResult = (id: string, userId: string, result: Omit<SquadResult, 'at'>) =>
-  postJSON<{ ok: true }>(`/api/squads/${id}/result`, { userId, result });
+/** The server plays a tournament with the saved squad and stores the result (see PlayRequest). */
+export const playTournament = (squadId: string, body: PlayRequest) =>
+  postJSONMessage<PlayResponse>(`/api/squads/${squadId}/play`, body);
+/** Uses a Second chance on the server: the squad may play one more tournament. */
+export const secondChanceRequest = (squadId: string, userId: string, requestId: string) =>
+  postJSONMessage<SecondChanceResponse>(`/api/squads/${squadId}/second-chance`, { userId, requestId });
+/** Puts a squad saved only to play onto the leaderboard. */
+export const listSquadRequest = (squadId: string, userId: string) =>
+  postJSONMessage<{ ok: true }>(`/api/squads/${squadId}/list`, { userId });
 /** Highest-overall squads (all time or this week). */
 export const fetchLeaderboard = (period: 'all' | 'week' = 'all') =>
   getJSON<LeaderboardResponse>(`/api/squads?limit=50&period=${period}`);

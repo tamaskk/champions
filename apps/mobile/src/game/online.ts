@@ -1,20 +1,25 @@
-import type { SaveSquadRequest, SquadResult } from '@champion/shared';
+import type { PlayChoice, PlayRequest, PlayResponse, SaveSquadRequest, SquadResult } from '@champion/shared';
 import { useSyncExternalStore } from 'react';
 
-import { postSquadResult, saveSquad, squadShareUrl } from '@/api/client';
+import { listSquadRequest, playTournament, saveSquad, secondChanceRequest, squadShareUrl } from '@/api/client';
 
-import { recordProgress } from './progress';
+import { recordProgress, teamName } from './progress';
 import { ensureUser } from './user';
+import { refreshWallet } from './wallet';
 
 /**
- * The current squad on the online leaderboard: save it under your username, and attach what it
- * achieved once its tournament is played (before or after saving).
+ * The current squad on the server. Tournaments are played by the server (never on the phone for a
+ * result that counts): the first time the squad plays, it is saved there "unlisted", the server
+ * simulates and stores the result, and the app shows it. "Save to leaderboard" then only puts the
+ * squad (with the results the server recorded) onto the public list.
  */
 
 export type ResultReport = Omit<SquadResult, 'at'>;
 
 export type OnlineState = {
+  /** The leaderboard listing: idle (not listed), saving, saved (listed), error. */
   status: 'idle' | 'saving' | 'saved' | 'error';
+  /** The squad's id on the server, once uploaded (listed or not). */
   onlineId?: string;
   results: ResultReport[];
   squad: Omit<SaveSquadRequest, 'userId'> | null;
@@ -37,8 +42,12 @@ export function useOnline(): OnlineState {
   );
 }
 
-/** A completed draft: can now be saved. */
+const sameSquad = (a: OnlineState['squad'], b: OnlineState['squad']) =>
+  !!a && !!b && JSON.stringify([a.formation, a.players, a.bench]) === JSON.stringify([b.formation, b.players, b.bench]);
+
+/** The drafted squad (XI, bench, captain). A changed squad is a new one on the server. */
 export function setCurrentSquad(squad: Omit<SaveSquadRequest, 'userId'>) {
+  if (sameSquad(state.squad, squad)) return;
   set({ status: 'idle', onlineId: undefined, results: [], squad });
 }
 
@@ -46,21 +55,62 @@ export function clearCurrentSquad() {
   set({ status: 'idle', onlineId: undefined, results: [], squad: null });
 }
 
-/** Saves the current squad (with its results so far). */
+let uploading: Promise<string> | null = null;
+
+/** The squad's id on the server, uploading it (unlisted) the first time it's needed. */
+export async function ensureOnlineSquad(): Promise<string> {
+  if (state.onlineId) return state.onlineId;
+  if (!state.squad) throw new Error('No squad');
+  uploading ??= (async () => {
+    const user = await ensureUser();
+    const { id } = await saveSquad({ ...state.squad!, userId: user.userId, listed: false });
+    set({ onlineId: id });
+    return id;
+  })().finally(() => {
+    uploading = null;
+  });
+  return uploading;
+}
+
+/** Plays a tournament on the server with the current squad; the result is already stored there. */
+export async function playOnline(choice: PlayChoice): Promise<PlayResponse> {
+  const id = await ensureOnlineSquad();
+  const user = await ensureUser();
+  return playTournament(id, { ...choice, userId: user.userId, teamName: teamName() } as PlayRequest);
+}
+
+/** Uses a Second chance for this squad on the server (it takes the item from the wallet). */
+export async function secondChanceOnline(): Promise<boolean> {
+  try {
+    const id = await ensureOnlineSquad();
+    const user = await ensureUser();
+    const r = await secondChanceRequest(id, user.userId, `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+    await refreshWallet();
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Puts the current squad on the leaderboard (uploading it first if it never played). */
 export async function saveCurrentSquad(): Promise<void> {
   if (!state.squad || state.status === 'saving' || state.status === 'saved') return;
   set({ status: 'saving' });
   try {
     const user = await ensureUser();
-    const { id } = await saveSquad({ ...state.squad, userId: user.userId });
-    for (const r of state.results) await postSquadResult(id, user.userId, r).catch(() => undefined);
-    set({ status: 'saved', onlineId: id });
+    if (state.onlineId) {
+      await listSquadRequest(state.onlineId, user.userId);
+    } else {
+      const { id } = await saveSquad({ ...state.squad, userId: user.userId, listed: true });
+      set({ onlineId: id });
+    }
+    set({ status: 'saved' });
   } catch {
     set({ status: 'error' });
   }
 }
 
-/** The squad's tournament result; sent to the leaderboard at once if the squad is saved. */
+/** A result the server produced for this squad: kept for the share card, counted for progress. */
 export function reportResult(r: ResultReport) {
   set({ results: [...state.results, r] });
   // Progress: league seasons are counted by recordSeason (they need W-D-L), dailies by the daily store.
@@ -71,14 +121,9 @@ export function reportResult(r: ResultReport) {
   } else if (r.mode === 'legend') {
     recordProgress({ kind: 'legend', won: r.outcome === 'win' });
   }
-  if (state.status === 'saved' && state.onlineId) {
-    ensureUser()
-      .then((u) => postSquadResult(state.onlineId!, u.userId, r))
-      .catch(() => undefined);
-  }
 }
 
-/** The current squad's public link (saves it on the leaderboard first if needed). */
+/** The current squad's public link (puts it on the leaderboard first if needed). */
 export async function currentSquadLink(): Promise<string | null> {
   await saveCurrentSquad();
   return state.onlineId ? squadShareUrl(state.onlineId) : null;

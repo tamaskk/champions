@@ -16,3 +16,4 @@ export * from './store';
 export * from './economy';
 export * from './auth';
 export * from './mini-leagues';
+export * from './play';

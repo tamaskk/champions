@@ -1,9 +1,9 @@
 import { savedSquadSide, type SquadDetail } from '@champion/shared';
 
-import { MatchPlay, playLocally } from '@/components/match-play';
+import { MatchPlay } from '@/components/match-play';
 import { TournamentShell } from '@/components/tournament-shell';
 import { setPendingChallenge } from '@/game/challenge';
-import type { ResultReport } from '@/game/online';
+import { playOnline, type ResultReport } from '@/game/online';
 import type { DraftPlayer } from '@/mocks/players';
 
 type Props = {
@@ -45,7 +45,12 @@ export function ChallengeMatch({
         opponentChip={`${squad.formation} · CHEM ${squad.chemistry}`}
         meta="SHARED XI · VENUE DRAWN AT KICK-OFF"
         metaPlayed={`@${squad.username}'s XI`}
-        simulate={async (you) => playLocally(you, { name: opponent.name, xi: opponent.xi, factor: opponent.factor })}
+        simulate={async () => {
+          // Played on the server with both saved squads; the result is stored there.
+          const r = await playOnline({ mode: 'challenge', opponentSquadId: squad.id });
+          if (r.mode !== 'challenge') throw new Error('Unexpected answer from the server');
+          return r.played;
+        }}
         onFinished={() => {
           setPendingChallenge(null);
           onFinished();

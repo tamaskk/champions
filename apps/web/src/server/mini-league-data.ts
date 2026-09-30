@@ -2,12 +2,9 @@ import "server-only";
 
 import {
   MINI_LEAGUE,
-  dailyScore,
   normalizeLeagueCode,
   todayKey,
   weekDates,
-  type DailyScoreRequest,
-  type DailyScoreResponse,
   type MiniLeagueDetail,
   type MiniLeagueStanding,
   type MiniLeaguesResponse,
@@ -15,7 +12,6 @@ import {
 import { ObjectId, type WithId } from "mongodb";
 import { randomInt } from "node:crypto";
 
-import { dailyChallenge } from "./daily-data";
 import { dailyScores, miniLeagues, users, type MiniLeagueDoc } from "./db";
 import { BadRequest, userOf } from "./leaderboard-data";
 
@@ -23,61 +19,8 @@ import { BadRequest, userOf } from "./leaderboard-data";
 // Challenge points. The userId (the device's secret) identifies the caller; other members are only
 // ever shown by username.
 
-const num = (x: unknown, lo: number, hi: number) =>
-  typeof x === "number" && Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : null;
 const isDate = (x: unknown): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x);
 
-function yesterday(today: string) {
-  return new Date(new Date(`${today}T00:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10);
-}
-
-/**
- * A Daily result from the app. The score is recomputed here from the day's real challenge (never
- * taken from the client), only for today or yesterday (a draft that ran past midnight), and only
- * the first result of a day counts.
- */
-export async function submitDailyScore(body: DailyScoreRequest | null): Promise<DailyScoreResponse> {
-  if (!body) throw new BadRequest("JSON body expected");
-  const user = await userOf(body.userId);
-  const today = todayKey();
-  if (!isDate(body.date) || (body.date !== today && body.date !== yesterday(today))) throw new BadRequest("date");
-  const { challenge } = await dailyChallenge(body.date);
-  if (body.challengeId !== challenge.id) throw new BadRequest("challengeId");
-
-  const o = body.outcome ?? ({} as DailyScoreRequest["outcome"]);
-  const overall = num(o.overall, 0, 100);
-  const chemistry = num(o.chemistry, 0, 100);
-  if (overall === null || chemistry === null) throw new BadRequest("outcome");
-  const match =
-    o.match && num(o.match.yours, 0, 20) !== null && num(o.match.theirs, 0, 20) !== null
-      ? { yours: Math.round(o.match.yours), theirs: Math.round(o.match.theirs) }
-      : null;
-  const { score, success } = dailyScore(challenge, { overall, chemistry: Math.round(chemistry), match });
-
-  const col = await dailyScores();
-  const res = await col.updateOne(
-    { userId: user.userId, date: body.date },
-    {
-      $setOnInsert: {
-        userId: user.userId,
-        date: body.date,
-        challengeId: challenge.id,
-        score,
-        success,
-        overall,
-        chemistry: Math.round(chemistry),
-        createdAt: new Date(),
-      },
-    },
-    { upsert: true },
-  );
-  const leagues = await (await miniLeagues()).countDocuments({ members: user.userId });
-  if (res.upsertedCount === 0) {
-    const first = await col.findOne({ userId: user.userId, date: body.date });
-    return { score: first?.score ?? score, success: first?.success ?? success, counted: false, leagues };
-  }
-  return { score, success, counted: true, leagues };
-}
 
 async function newCode(): Promise<string> {
   const { codeAlphabet, codeLength } = MINI_LEAGUE;

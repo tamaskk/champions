@@ -17,9 +17,8 @@ import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, SHADOW_LG, SHADOW_SM } from '@/design/ui';
 import type { DraftPlayer } from '@/mocks/players';
-import { teamName } from '@/game/progress';
 import { Fireworks } from '@/components/celebration';
-import { useProgress } from '@/game/progress';
+import { teamName, useProgress } from '@/game/progress';
 
 /** A played match from your point of view (the engine's home side is `youAtHome ? you : them`). */
 export type Played = {
@@ -129,6 +128,7 @@ export function MatchPlay({
 }: Props) {
   const [played, setPlayed] = useState<Played | null>(preplayed?.played ?? null);
   const [playing, setPlaying] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [errorText, setErrorText] = useState<string | null>(null);
   // null = quick sim (everything shown at once).
   const [clock, setClock] = useState<Clock | null>(
     preplayed && preplayed.speed !== 'quick' ? { minute: 0, phase: 'first' } : null,
@@ -170,7 +170,8 @@ export function MatchPlay({
       setClock(live ? { minute: 0, phase: 'first' } : null);
       onFinished();
       setPlaying('idle');
-    } catch {
+    } catch (e) {
+      setErrorText(e instanceof Error && e.message ? e.message : null);
       setPlaying('error');
     }
   };
@@ -206,7 +207,7 @@ export function MatchPlay({
 
       {playing === 'error' && (
         <Txt v="bodySemi" color={C.red} style={styles.center}>
-          Couldn&apos;t load the opponent&apos;s squad.
+          {errorText ?? 'Couldn’t play the match – check your connection.'}
         </Txt>
       )}
       {clock && clock.phase !== 'ft' ? (

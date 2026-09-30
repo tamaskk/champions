@@ -2,12 +2,12 @@ import {
   lastCompleteSeason,
   seasonLabel,
   sideFromLineup,
-  simulateCup,
   squadInsight,
   type CupFieldResponse,
   type CupMatch,
   type CupResult,
   type CupTeam,
+  type SquadInsight,
   type League,
 } from '@champion/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -20,7 +20,7 @@ import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
 import { ResultInsight } from '@/components/result-insight';
 import { EndBar, TournamentShell, type ShellMode } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
-import type { ResultReport } from '@/game/online';
+import { playOnline, type ResultReport } from '@/game/online';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, Chip, Glow, SHADOW_LG, SHADOW_SM } from '@/design/ui';
@@ -132,7 +132,9 @@ export function CupTournament({
 
   const [result, setResult] = useState<CupResult | null>(null);
   const [view, setView] = useState<View3>('path');
-  const [simError, setSimError] = useState(false);
+  // null = fine; 'loading'; or the error to show.
+  const [simError, setSimError] = useState<string | null>(null);
+  const [serverInsight, setServerInsight] = useState<SquadInsight | null>(null);
   // The "why": your lines against the clubs you actually played.
   const why = useMemo(() => {
     const you = byId.get(YOUR_ID);
@@ -143,47 +145,32 @@ export function CupTournament({
       return t ? [t] : [];
     });
     return {
-      insight: squadInsight(you, faced),
+      insight: serverInsight ?? squadInsight(you, faced),
       goalsFor: mine.reduce((n, m) => n + fromYou(m).ours, 0),
       goalsAgainst: mine.reduce((n, m) => n + fromYou(m).theirs, 0),
       matches: mine.length,
     };
-  }, [result, byId]);
+  }, [result, byId, serverInsight]);
   useEffect(() => {
     setResult(null);
     setView('path');
-    setSimError(false);
+    setSimError(null);
   }, [field]);
 
-  const simulate = () => {
-    if (!teams) return;
+  // Played on the server with the saved squad (same field of clubs); the result is stored there.
+  const simulate = async () => {
+    if (!teams || !field || simError === 'loading') return;
+    setSimError('loading');
     try {
-      const r = simulateCup(teams.slice(0, 32));
-      setResult(r);
-      const champion = r.championId === YOUR_ID;
-      const last = [...r.rounds].reverse().find((x) => x.ties.some((t) => t.a === YOUR_ID || t.b === YOUR_ID));
-      onResult?.({
-        mode: 'cup',
-        title: `Champions League ${season ? seasonLabel(season) : ''}`.trim(),
-        detail: champion
-          ? 'Winners'
-          : last
-            ? last.name === 'Final'
-              ? 'Runner-up'
-              : `Out: ${last.name}`
-            : 'Group stage exit',
-        outcome: champion
-          ? 'champion'
-          : last?.name === 'Final' || last?.name === 'Semi-finals'
-            ? 'top'
-            : last
-              ? 'mid'
-              : 'out',
-      });
+      const r = await playOnline({ mode: 'cup', season: field.season });
+      if (r.mode !== 'cup') throw new Error('Unexpected answer from the server');
+      setServerInsight(r.insight);
+      setResult(r.result);
+      onResult?.(r.report);
       onFinished();
-      setSimError(false);
-    } catch {
-      setSimError(true);
+      setSimError(null);
+    } catch (e) {
+      setSimError(e instanceof Error && e.message ? e.message : 'Couldn’t play the tournament – check your connection.');
     }
   };
 
@@ -339,14 +326,14 @@ export function CupTournament({
           <Btn
             kind="blue"
             icon="play_arrow"
-            label="Simulate Champions League"
+            label={simError === 'loading' ? 'Playing…' : 'Simulate Champions League'}
             sub="Groups · knockouts · final"
-            disabled={teams.length < 32}
+            disabled={teams.length < 32 || simError === 'loading'}
             onPress={simulate}
           />
-          {simError && (
+          {simError && simError !== 'loading' && (
             <Txt v="bodySemi" color={C.red} style={styles.center}>
-              The draw failed – try again.
+              {simError}
             </Txt>
           )}
         </Animated.View>

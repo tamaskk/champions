@@ -6,7 +6,6 @@ import {
   seasonLabel,
   type League,
   type LeagueTableResponse,
-  type MatchSide,
   type OpponentResponse,
 } from '@champion/shared';
 import { useEffect, useRef, useState } from 'react';
@@ -14,12 +13,12 @@ import { StyleSheet, View } from 'react-native';
 
 import { fetchOpponent, fetchTable } from '@/api/client';
 import { Select } from '@/components/select';
-import { MatchPlay, playLocally } from '@/components/match-play';
+import { MatchPlay } from '@/components/match-play';
 import { TournamentShell, type ShellMode } from '@/components/tournament-shell';
 import { Txt } from '@/design/text';
 import { C, R } from '@/design/tokens';
 import { Btn, SHADOW_SM } from '@/design/ui';
-import type { ResultReport } from '@/game/online';
+import { playOnline, type ResultReport } from '@/game/online';
 import type { DraftPlayer } from '@/mocks/players';
 
 type Props = {
@@ -117,12 +116,11 @@ export function MatchSetup({
     ? opponentXI.xi.reduce((s, p) => s + (p.rating ?? 50), 0) / opponentXI.xi.length
     : null;
 
-  const simulate = async (you: MatchSide) => {
-    const opp =
-      opponentXI && opponentXI.clubSlug === clubSlug && opponentXI.season === season
-        ? opponentXI
-        : await fetchOpponent({ league, season, club: clubSlug! });
-    return playLocally(you, { name: opp.club, xi: opp.xi });
+  // Played on the server with the saved squad; the result is stored there.
+  const simulate = async () => {
+    const r = await playOnline({ mode: 'match', league, season, clubSlug: clubSlug! });
+    if (r.mode !== 'match') throw new Error('Unexpected answer from the server');
+    return r.played;
   };
 
   return (

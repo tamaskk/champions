@@ -4,13 +4,13 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { h2hGhost, h2hQueue, h2hTicket } from '@/api/client';
-import { MatchPlay, yourSide, type Played } from '@/components/match-play';
+import { MatchPlay, type Played } from '@/components/match-play';
 import { TournamentShell } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, Chip, SHADOW_SM } from '@/design/ui';
-import type { ResultReport } from '@/game/online';
+import { ensureOnlineSquad, type ResultReport } from '@/game/online';
 import { ensureUser, useUser } from '@/game/user';
 import type { DraftPlayer } from '@/mocks/players';
 import { claim } from '@/game/wallet';
@@ -50,7 +50,7 @@ export function H2HMatch({
 }: Props) {
   const user = useUser();
   const [search, setSearch] = useState<Search>({ status: 'idle' });
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [locked, setLocked] = useState(false);
   const userId = useRef<string | null>(null);
 
@@ -64,11 +64,8 @@ export function H2HMatch({
     try {
       const u = await ensureUser();
       userId.current = u.userId;
-      const you = yourSide(formation, lineup);
-      const t = await h2hQueue({
-        userId: u.userId,
-        side: { username: u.username, overall, chemistry, formation, xi: you.xi, factor: you.factor ?? 1 },
-      });
+      // The server builds your side from the saved squad (never from numbers the app sends).
+      const t = await h2hQueue({ userId: u.userId, squadId: await ensureOnlineSquad() });
       if (t.status === 'waiting')
         setSearch({ status: 'searching', ticketId: t.ticketId, since: Date.parse(t.since) || Date.now() });
       else onTicket(t);

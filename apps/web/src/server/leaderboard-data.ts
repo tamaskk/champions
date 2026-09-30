@@ -17,7 +17,6 @@ import {
   type SaveSquadRequest,
   type SavedPlayer,
   type SquadDetail,
-  type SquadResult,
   type UserResponse,
 } from "@champion/shared";
 import { ObjectId, type WithId } from "mongodb";
@@ -73,6 +72,12 @@ function cleanPlayer(p: unknown): SavedPlayer {
   };
 }
 
+/** A substitute: any role, no spot. */
+function cleanBenchPlayer(p: unknown): SavedPlayer {
+  const x = (p ?? {}) as Partial<SavedPlayer>;
+  return cleanPlayer({ ...x, spot: "SUB", captain: false });
+}
+
 const leagueOf = (label: string) =>
   (Object.keys(LEAGUE_ADJECTIVES) as League[]).find((l) => LEAGUE_ADJECTIVES[l] === label || l === label) ?? null;
 const decadeOf = (label: string) => DECADES.find((d) => decadeLabel(d) === label || String(d) === label) ?? null;
@@ -83,7 +88,7 @@ const decadeOf = (label: string) => DECADES.find((d) => decadeLabel(d) === label
  * overall, rating and chemistry computed with the same function the app uses. A player that can't be
  * found (e.g. a demo player where no squad is imported) counts as unrated and without links.
  */
-async function verifySquad(formation: string, sent: SavedPlayer[]) {
+export async function verifySquad(formation: string, sent: SavedPlayer[], sentBench: SavedPlayer[] = []) {
   const layout = formationLayout(formation);
   const roles = formationRoles(formation);
   sent.forEach((p, i) => {
@@ -93,9 +98,8 @@ async function verifySquad(formation: string, sent: SavedPlayer[]) {
   if (sent.filter((p) => p.captain).length > 1) throw new BadRequest("players: one captain at most");
 
   const squads = new Map<string, Awaited<ReturnType<typeof squadInDecade>>>();
-  const lineup: (ChemistryPlayer & { rating: number | null })[] = [];
-  const players: SavedPlayer[] = [];
-  for (const p of sent) {
+  type Checked = ChemistryPlayer & { rating: number | null; goals: number | null; appearances: number | null };
+  const lookUp = async (p: SavedPlayer): Promise<{ player: Checked; saved: SavedPlayer }> => {
     const league = leagueOf(p.league);
     const decade = decadeOf(p.decade);
     const clubSlug = slugify(p.club);
@@ -107,19 +111,40 @@ async function verifySquad(formation: string, sent: SavedPlayer[]) {
       found = squads.get(key)!.find((q) => q.nameSlug === nameSlug || q.name === p.name);
     }
     const rating = found?.rating ?? null;
-    lineup.push({
-      id: found?.nameSlug ?? slugify(p.name),
-      name: p.name,
-      position: found?.position ?? p.role,
-      positions: found?.positions ?? [],
-      chemistry: found?.chemistry ?? null,
-      rating,
-      captain: p.captain === true,
-    });
-    players.push({ ...p, rating });
+    return {
+      player: {
+        id: found?.nameSlug ?? slugify(p.name),
+        name: p.name,
+        position: found?.position ?? p.role,
+        positions: found?.positions ?? [],
+        chemistry: found?.chemistry ?? null,
+        rating,
+        goals: found?.goals ?? null,
+        appearances: found?.appearances ?? null,
+        captain: p.captain === true,
+      },
+      saved: { ...p, rating },
+    };
+  };
+  const lineup: Checked[] = [];
+  const players: SavedPlayer[] = [];
+  for (const p of sent) {
+    const r = await lookUp(p);
+    lineup.push(r.player);
+    players.push(r.saved);
+  }
+  const benchLineup: Checked[] = [];
+  const bench: SavedPlayer[] = [];
+  for (const p of sentBench.slice(0, 5)) {
+    const r = await lookUp({ ...p, captain: false });
+    benchLineup.push(r.player);
+    bench.push({ ...r.saved, spot: "SUB" });
   }
   const summary = squadSummary(formation, lineup);
   return {
+    lineup,
+    benchLineup,
+    bench,
     players,
     overall: Math.round(summary.overall * 100) / 100,
     rating: Math.round(summary.rating * 100) / 100,
@@ -133,7 +158,8 @@ export async function saveSquad(body: SaveSquadRequest | null): Promise<{ id: st
   if (!(FORMATIONS as readonly string[]).includes(body.formation)) throw new BadRequest("formation");
   if (!Array.isArray(body.players) || body.players.length !== 11) throw new BadRequest("players: 11 expected");
   // Overall, rating and chemistry are recomputed here from the database – the client's numbers are ignored.
-  const squad = await verifySquad(body.formation, body.players.map(cleanPlayer));
+  const bench = Array.isArray(body.bench) ? body.bench.slice(0, 5).map(cleanBenchPlayer) : [];
+  const squad = await verifySquad(body.formation, body.players.map(cleanPlayer), bench);
   const doc: SavedSquadDoc = {
     userId: user.userId,
     username: user.username,
@@ -142,33 +168,15 @@ export async function saveSquad(body: SaveSquadRequest | null): Promise<{ id: st
     rating: squad.rating,
     chemistry: squad.chemistry,
     players: squad.players,
+    bench: squad.bench,
+    listed: body.listed !== false,
+    plays: 0,
+    extraPlays: 0,
     results: [],
     createdAt: new Date(),
   };
   const { insertedId } = await (await savedSquads()).insertOne(doc);
   return { id: insertedId.toHexString() };
-}
-
-const MODES = ["match", "league", "cup", "legend", "daily", "h2h"] as const;
-const OUTCOMES = ["win", "draw", "loss", "champion", "top", "mid", "out"] as const;
-
-/** A tournament result of a saved squad (only its owner can add one). */
-export async function addSquadResult(id: string, body: { userId?: string; result?: SquadResult } | null) {
-  const _id = oid(id);
-  if (!_id || !body?.result) throw new BadRequest("id / result");
-  const r = body.result;
-  if (!MODES.includes(r.mode) || !OUTCOMES.includes(r.outcome)) throw new BadRequest("result");
-  const result: SquadResult = {
-    mode: r.mode,
-    outcome: r.outcome,
-    title: str(r.title, 80),
-    detail: str(r.detail, 80),
-    at: new Date().toISOString(),
-  };
-  const { matchedCount } = await (
-    await savedSquads()
-  ).updateOne({ _id, userId: str(body.userId, 64) }, { $push: { results: { $each: [result], $slice: -20 } } });
-  if (!matchedCount) throw new BadRequest("Not your squad");
 }
 
 const entryOf = (d: WithId<SavedSquadDoc>): LeaderboardEntry => ({
@@ -183,7 +191,9 @@ const entryOf = (d: WithId<SavedSquadDoc>): LeaderboardEntry => ({
 
 /** Highest overall first; `period` = all time or the last 7 days. */
 export async function leaderboard(limit = 50, period: "all" | "week" = "all"): Promise<LeaderboardEntry[]> {
-  const filter = period === "week" ? { createdAt: { $gte: new Date(Date.now() - 7 * 86_400_000) } } : {};
+  // Squads saved only to play (not put on the leaderboard by their owner) stay hidden.
+  const listed = { listed: { $ne: false } };
+  const filter = period === "week" ? { ...listed, createdAt: { $gte: new Date(Date.now() - 7 * 86_400_000) } } : listed;
   const docs = await (
     await savedSquads()
   )

@@ -17,7 +17,11 @@ export type H2HSide = {
 };
 
 /** POST /api/h2h/queue */
-export type H2HQueueRequest = { userId: string; side: H2HSide };
+export type H2HQueueRequest = {
+  userId: string;
+  /** The saved squad that plays: the server builds its side from it (ratings from the database). */
+  squadId: string;
+};
 
 export type H2HMatched = {
   status: 'matched';

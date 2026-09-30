@@ -4,27 +4,22 @@ import {
   LEAGUE_NAMES,
   lastCompleteSeason,
   leagueFirstSeason,
-  pointsForWin,
   seasonLabel,
-  sideFromLineup,
-  simulateSeason,
-  squadInsight,
   weakestClub,
   type League,
   type LeagueTableResponse,
-  type SeasonTeam,
 } from '@champion/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeOut } from 'react-native-reanimated';
 
-import { fetchSeasonXIs, fetchTable } from '@/api/client';
-import { SeasonPlayer, TableRow, ordinal, signed } from '@/components/season-player';
+import { fetchTable } from '@/api/client';
+import { SeasonPlayer, TableRow, signed } from '@/components/season-player';
 import { Select } from '@/components/select';
 import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
 import { TournamentShell, type ShellMode } from '@/components/tournament-shell';
-import { YOUR_ID, leagueSeasonTitle, startLeagueSeason, useLeagueSeason } from '@/game/league-season';
-import type { ResultReport } from '@/game/online';
+import { leagueSeasonTitle, startLeagueSeason, useLeagueSeason } from '@/game/league-season';
+import { playOnline, type ResultReport } from '@/game/online';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
@@ -67,10 +62,6 @@ const seasonsOf = (league: League) => {
   return Array.from({ length: last - leagueFirstSeason(league) + 1 }, (_, i) => last - i);
 };
 const randomOf = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)];
-const average = (xs: (number | null)[]) => {
-  const known = xs.filter((x): x is number => x !== null);
-  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : null;
-};
 const shortSeason = (season: number) => `'${seasonLabel(season).slice(2)}`;
 
 /**
@@ -150,31 +141,18 @@ export function LeagueTournament({
   // ---- Season: simulated in full at kick-off, then played matchday by matchday (SeasonPlayer).
   const [sim, setSim] = useState<Sim>('idle');
   const saved = useLeagueSeason();
-  const xisCache = useRef<{ key: string; teams: SeasonTeam[] } | null>(null);
 
+  // Played on the server with the saved squad (bench included); the result is stored there, and the
+  // player reveals it matchday by matchday here. The season record (XP, Hall of Fame) is written when
+  // the last matchday is shown.
+  const [simError, setSimError] = useState<string | null>(null);
   const startSeason = async () => {
     if (!table || !replaced) return;
     setSim('loading');
+    setSimError(null);
     try {
-      const key = `${table.league}-${table.season}`;
-      let teams = xisCache.current?.key === key ? xisCache.current.teams : null;
-      if (!teams) {
-        const data = await fetchSeasonXIs({ league: table.league, season: table.season });
-        teams = data.clubs
-          .filter((c) => c.clubSlug !== replaced.clubSlug && c.xi.length > 0)
-          .map((c) => ({ id: c.clubSlug, name: c.club, xi: c.xi, factor: 1 }));
-        xisCache.current = { key, teams };
-      }
-      const you = sideFromLineup(
-        teamName(),
-        formation,
-        lineup.map((p) => (p ? { ...p, rating: p.rating ?? null } : null)),
-        bench.map((p) => (p ? { ...p, rating: p.rating ?? null } : null)),
-      );
-      const all = [...teams, { ...you, id: YOUR_ID }];
-      const result = simulateSeason(all, pointsForWin(table.league, table.season), Math.random, {
-        detailFor: YOUR_ID,
-      });
+      const r = await playOnline({ mode: 'league', league: table.league, season: table.season });
+      if (r.mode !== 'league') throw new Error('Unexpected answer from the server');
       startLeagueSeason({
         league: table.league,
         season: table.season,
@@ -183,27 +161,18 @@ export function LeagueTournament({
         formation,
         overall,
         chemistry,
-        replaced: replaced.club,
-        teams: all.map((t) => ({ id: t.id, name: t.name, rating: average(t.xi.map((p) => p.rating)) })),
-        result,
-        rounds: Math.max(...result.fixtures.map((f) => f.round)),
-        insight: squadInsight(you, teams),
-        bench: you.bench?.length ?? 0,
+        replaced: r.replaced,
+        teams: r.teams,
+        result: r.result,
+        rounds: Math.max(...r.result.fixtures.map((f) => f.round)),
+        insight: r.insight,
+        bench: r.bench,
       });
-      // The squad's result goes to the leaderboard now (it is decided); the player sees it matchday by
-      // matchday, and the season record (XP, Hall of Fame) is written when the last one is shown.
-      const row = result.table.find((r) => r.id === YOUR_ID)!;
-      const clubs = result.table.length;
-      onResult?.({
-        mode: 'league',
-        title: `${LEAGUE_NAMES[table.league].split(' / ')[0]} ${seasonLabel(table.season)}`,
-        detail: `${ordinal(row.position)} · ${row.won}-${row.drawn}-${row.lost} · ${row.points} pts`,
-        outcome:
-          row.position === 1 ? 'champion' : row.position <= 4 ? 'top' : row.position <= clubs / 2 ? 'mid' : 'out',
-      });
+      onResult?.(r.report);
       setSim('started');
       onFinished();
-    } catch {
+    } catch (e) {
+      setSimError(e instanceof Error && e.message ? e.message : null);
       setSim('error');
     }
   };
@@ -411,7 +380,7 @@ export function LeagueTournament({
 
           {sim === 'error' && (
             <Txt v="bodySemi" color={C.red} style={styles.center}>
-              Couldn&apos;t load the clubs&apos; squads.
+              {simError ?? 'Couldn’t play the season – check your connection.'}
             </Txt>
           )}
           {saved && !saved.recorded && (

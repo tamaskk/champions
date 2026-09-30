@@ -35,10 +35,15 @@ export type SquadResult = {
 export type SaveSquadRequest = {
   userId: string;
   formation: string;
+  /** Sent by the app for display; the server recomputes all three from the database. */
   overall: number;
   rating: number;
   chemistry: number;
   players: SavedPlayer[];
+  /** Substitutes (spot "SUB"), rotated in over a league season. */
+  bench?: SavedPlayer[];
+  /** false: saved only so the server can play its tournaments – not shown on the leaderboard yet. */
+  listed?: boolean;
 };
 
 /** GET /api/squads – leaderboard row (highest overall first). */

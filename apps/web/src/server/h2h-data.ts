@@ -1,51 +1,61 @@
 import "server-only";
 
 import {
-  FORMATIONS,
   H2H_WAIT_SECONDS,
-  PLAYER_ROLES,
   matchEvents,
   simulateMatch,
   type H2HMatched,
   type H2HQueueRequest,
   type H2HSide,
   type H2HTicket,
-  type MatchPlayer,
   type MatchSide,
+  type SquadResult,
 } from "@champion/shared";
 import { ObjectId, type WithId } from "mongodb";
 
 import { h2hTickets, savedSquads, type H2HTicketDoc, type SavedSquadDoc } from "./db";
 import { BadRequest, userOf } from "./leaderboard-data";
+import { claimPlay, ownSquad, storeResult, yourSide } from "./play-data";
 
-const num = (x: unknown, lo: number, hi: number) =>
-  typeof x === "number" && Number.isFinite(x) ? Math.min(hi, Math.max(lo, x)) : null;
 const oid = (id: string) => (ObjectId.isValid(id) ? new ObjectId(id) : null);
 const waitLimit = () => new Date(Date.now() - H2H_WAIT_SECONDS * 1000);
 
-function cleanSide(side: unknown, username: string): H2HSide {
-  const s = (side ?? {}) as Partial<H2HSide>;
-  if (!Array.isArray(s.xi) || s.xi.length < 7 || s.xi.length > 11) throw new BadRequest("side.xi");
-  if (!(FORMATIONS as readonly string[]).includes(s.formation ?? "")) throw new BadRequest("side.formation");
-  const xi: MatchPlayer[] = s.xi.map((p) => {
-    if (!PLAYER_ROLES.includes(p?.position)) throw new BadRequest("side.xi.position");
-    return {
-      name: String(p.name ?? "").slice(0, 80),
-      position: p.position,
-      rating: num(p.rating, 0, 100),
-      goals: num(p.goals, 0, 2000),
-      appearances: num(p.appearances, 0, 2000),
-    };
-  });
+/** The player's side, built by the server from the saved squad (never from numbers the app sends). */
+async function squadSide(squadId: unknown, userId: string, username: string): Promise<H2HSide> {
+  if (typeof squadId !== "string") throw new BadRequest("squadId");
+  const doc = await ownSquad(squadId, userId);
+  if ((doc.plays ?? 0) >= 1 + (doc.extraPlays ?? 0)) {
+    throw new BadRequest("This squad has played its tournament – use a Second chance or draft a new XI");
+  }
+  const side = await yourSide(doc, `@${username}`);
   return {
     username,
-    overall: num(s.overall, 0, 100) ?? 0,
-    chemistry: Math.round(num(s.chemistry, 0, 100) ?? 0),
-    formation: s.formation!,
-    xi,
-    // Chemistry factor range is 0.92–1.08.
-    factor: num(s.factor, 0.9, 1.1) ?? 1,
+    overall: doc.overall,
+    chemistry: doc.chemistry,
+    formation: doc.formation,
+    xi: side.xi,
+    factor: side.factor ?? 1,
   };
+}
+
+/** Stores a head-to-head result on the squad that played it (and uses up its tournament). */
+async function recordResult(squadId: string | undefined, match: H2HMatched) {
+  const _id = squadId && ObjectId.isValid(squadId) ? new ObjectId(squadId) : null;
+  if (!_id) return;
+  const yours = match.youAtHome ? match.result.homeGoals : match.result.awayGoals;
+  const theirs = match.youAtHome ? match.result.awayGoals : match.result.homeGoals;
+  const report: SquadResult = {
+    mode: "h2h",
+    title: `Head-to-head vs @${match.opponent.username}${match.opponent.ghost ? " (saved XI)" : ""}`,
+    detail: `${yours}–${theirs}`,
+    outcome: yours > theirs ? "win" : yours === theirs ? "draw" : "loss",
+  };
+  try {
+    await claimPlay(_id);
+    await storeResult(_id, report);
+  } catch {
+    // The squad used its tournament elsewhere in the meantime: the match stands, no result is stored.
+  }
 }
 
 const matchSide = (s: H2HSide): MatchSide => ({ name: `@${s.username}`, xi: s.xi, factor: s.factor });
@@ -85,7 +95,7 @@ function ticketView(t: WithId<H2HTicketDoc>): H2HTicket {
 export async function h2hQueue(body: H2HQueueRequest | null): Promise<H2HTicket> {
   if (!body) throw new BadRequest("JSON body expected");
   const user = await userOf(body.userId);
-  const side = cleanSide(body.side, user.username);
+  const side = await squadSide(body.squadId, user.userId, user.username);
   const col = await h2hTickets();
   await col.updateMany({ status: "waiting", createdAt: { $lt: waitLimit() } }, { $set: { status: "expired" } });
   // One open ticket per player.
@@ -100,12 +110,14 @@ export async function h2hQueue(body: H2HQueueRequest | null): Promise<H2HTicket>
   const _id = new ObjectId();
   if (!opponent) {
     const createdAt = new Date();
-    await col.insertOne({ _id, userId: user.userId, side, status: "waiting", createdAt });
+    await col.insertOne({ _id, userId: user.userId, squadId: body.squadId, side, status: "waiting", createdAt });
     return { status: "waiting", ticketId: _id.toHexString(), since: createdAt.toISOString() };
   }
   const views = play(side, opponent.side, [_id.toHexString(), opponent._id.toHexString()]);
-  await col.insertOne({ _id, userId: user.userId, side, status: "matched", createdAt: new Date(), match: views.a });
+  await col.insertOne({ _id, userId: user.userId, squadId: body.squadId, side, status: "matched", createdAt: new Date(), match: views.a });
   await col.updateOne({ _id: opponent._id }, { $set: { match: views.b } });
+  await recordResult(body.squadId, views.a);
+  await recordResult(opponent.squadId, views.b);
   return views.a;
 }
 
@@ -134,7 +146,7 @@ export async function h2hGhost(id: string, userId: string | null): Promise<H2HTi
   const [squad] = await (
     await savedSquads()
   )
-    .aggregate<WithId<SavedSquadDoc>>([{ $match: { userId: { $ne: userId } } }, { $sample: { size: 1 } }])
+    .aggregate<WithId<SavedSquadDoc>>([{ $match: { userId: { $ne: userId }, listed: { $ne: false } } }, { $sample: { size: 1 } }])
     .toArray();
   if (!squad) {
     await col.updateOne({ _id }, { $set: { status: "expired" } });
@@ -150,5 +162,6 @@ export async function h2hGhost(id: string, userId: string | null): Promise<H2HTi
   };
   const views = play(ticket.side, ghost, [id, id], true);
   await col.updateOne({ _id }, { $set: { match: views.a } });
+  await recordResult(ticket.squadId, views.a);
   return views.a;
 }

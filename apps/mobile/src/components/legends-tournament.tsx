@@ -1,26 +1,17 @@
-import {
-  LEGENDS,
-  matchEvents,
-  seasonLabel,
-  simulateMatch,
-  type Legend,
-  type LegendResponse,
-  type MatchEvent,
-  type MatchResult,
-} from '@champion/shared';
+import { LEGENDS, seasonLabel, type Legend, type LegendLeg, type LegendResponse, type LegendTie } from '@champion/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { fetchLegend, fetchLegendsAvailability } from '@/api/client';
-import { MatchPlay, playLocally, yourSide } from '@/components/match-play';
+import { MatchPlay } from '@/components/match-play';
 import { EndBar, TournamentShell } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, Chip, Glow, SHADOW_LG, SHADOW_SM } from '@/design/ui';
 import { collectLegend, useLegendCollection } from '@/game/legends';
-import type { ResultReport } from '@/game/online';
+import { playOnline, type ResultReport } from '@/game/online';
 import type { DraftPlayer } from '@/mocks/players';
 import { teamName } from '@/game/progress';
 
@@ -37,38 +28,13 @@ type Props = {
 };
 
 type Format = 'single' | 'tie';
-type Leg = { youAtHome: boolean; result: MatchResult; events: MatchEvent[]; yours: number; theirs: number };
-type Tie = {
-  legs: [Leg, Leg];
-  aggYours: number;
-  aggTheirs: number;
-  penalties: { yours: number; theirs: number } | null;
-  won: boolean;
-};
+type Leg = LegendLeg;
+type Tie = LegendTie;
 
 const TIERS = [3, 2, 1] as const;
 const TIER_LABEL = { 3: 'IMMORTALS', 2: 'GIANTS', 1: 'CULT HEROES' } as const;
 const TIER_TINT = { 3: C.gold, 2: C.blueLight, 1: C.green } as const;
 const TIER_ICON = { 3: 'crown', 2: 'workspace_premium', 1: 'stars' } as const;
-const PENALTY_SCORED = 0.76;
-
-/** A shoot-out: five each, then sudden death. */
-function shootout(random = Math.random) {
-  let yours = 0;
-  let theirs = 0;
-  for (let k = 0; k < 5; k++) {
-    if (random() < PENALTY_SCORED) yours++;
-    if (random() < PENALTY_SCORED) theirs++;
-  }
-  while (yours === theirs) {
-    const a = random() < PENALTY_SCORED;
-    const b = random() < PENALTY_SCORED;
-    if (a) yours++;
-    if (b) theirs++;
-  }
-  return { yours, theirs };
-}
-
 /**
  * Legends mode: 40 legendary club seasons as bosses. Pick one, play a single match or a two-legged
  * tie against its real XI; every legend you beat goes into your collection.
@@ -122,32 +88,22 @@ export function LegendsTournament({
     onResult?.(result);
   };
 
-  const playTie = () => {
-    if (!picked || !xi) return;
-    const you = yourSide(formation, lineup);
-    const them = { name: picked.nickname, xi: xi.xi, factor: 1 };
-    const leg = (youAtHome: boolean): Leg => {
-      const [home, away] = youAtHome ? [you, them] : [them, you];
-      const result = simulateMatch(home, away);
-      const yours = youAtHome ? result.homeGoals : result.awayGoals;
-      const theirs = youAtHome ? result.awayGoals : result.homeGoals;
-      return { youAtHome, result, events: matchEvents(home, away, result), yours, theirs };
-    };
-    // You play the first leg at home, the legend hosts the return leg.
-    const legs: [Leg, Leg] = [leg(true), leg(false)];
-    const aggYours = legs[0].yours + legs[1].yours;
-    const aggTheirs = legs[0].theirs + legs[1].theirs;
-    const penalties = aggYours === aggTheirs ? shootout() : null;
-    const won = penalties ? penalties.yours > penalties.theirs : aggYours > aggTheirs;
-    setTie({ legs, aggYours, aggTheirs, penalties, won });
-    setLocked(true);
-    onFinished();
-    finish(picked, won, {
-      mode: 'legend',
-      title: `vs ${picked.nickname} (${label(picked)})`,
-      detail: `${aggYours}–${aggTheirs} agg.${penalties ? ` · pens ${penalties.yours}–${penalties.theirs}` : ''}`,
-      outcome: won ? 'win' : 'loss',
-    });
+  // The two-legged tie is played on the server with the saved squad; the result is stored there.
+  const [tieState, setTieState] = useState<'idle' | 'loading' | string>('idle');
+  const playTie = async () => {
+    if (!picked || !xi || tieState === 'loading') return;
+    setTieState('loading');
+    try {
+      const r = await playOnline({ mode: 'legend', legendId: picked.id, format: 'tie' });
+      if (r.mode !== 'legend' || !r.tie) throw new Error('Unexpected answer from the server');
+      setTie(r.tie);
+      setLocked(true);
+      setTieState('idle');
+      onFinished();
+      finish(picked, r.tie.won, r.report);
+    } catch (e) {
+      setTieState(e instanceof Error && e.message ? e.message : 'Couldn’t play the tie – check your connection.');
+    }
   };
 
   return (
@@ -287,9 +243,11 @@ export function LegendsTournament({
               opponentChip={`LEGEND ${'★'.repeat(picked.tier)}`}
               meta={`${label(picked)} · VENUE DRAWN AT KICK-OFF`}
               metaPlayed={label(picked)}
-              simulate={async (you) => {
-                const opp = xi ?? (await fetchLegend(picked.id));
-                return playLocally(you, { name: picked.nickname, xi: opp.xi });
+              simulate={async () => {
+                // Played on the server with the saved squad; the result is stored there.
+                const r = await playOnline({ mode: 'legend', legendId: picked.id, format: 'single' });
+                if (r.mode !== 'legend' || !r.played) throw new Error('Unexpected answer from the server');
+                return r.played;
               }}
               onFinished={() => {
                 setLocked(true);
@@ -344,11 +302,16 @@ export function LegendsTournament({
               <Btn
                 kind="blue"
                 icon="swords"
-                label={xi ? 'Play the tie' : 'Loading the legend…'}
+                label={!xi ? 'Loading the legend…' : tieState === 'loading' ? 'Playing…' : 'Play the tie'}
                 sub="Both legs at once"
-                disabled={!xi}
+                disabled={!xi || tieState === 'loading'}
                 onPress={playTie}
               />
+              {tieState !== 'idle' && tieState !== 'loading' && (
+                <Txt v="bodySemi" color={C.red} style={styles.center}>
+                  {tieState}
+                </Txt>
+              )}
               {!xi && <ActivityIndicator color={C.green} />}
             </View>
           )}

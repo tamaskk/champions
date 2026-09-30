@@ -1,9 +1,18 @@
-import { dailyChecks, dailyScore, dailyShareText, legendById, type DailyScoreResponse, type DailyResponse, type LegendResponse } from '@champion/shared';
+import {
+  dailyChecks,
+  dailyScore,
+  dailyShareText,
+  legendById,
+  scoreOf,
+  type DailyResponse,
+  type LegendResponse,
+  type PlayResponse,
+} from '@champion/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
-import { fetchLegend, submitDailyScore } from '@/api/client';
+import { fetchLegend } from '@/api/client';
 import { MatchPlay, playLocally } from '@/components/match-play';
 import { SaveSquadButton } from '@/components/save-squad';
 import { TournamentShell } from '@/components/tournament-shell';
@@ -11,10 +20,9 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, R, alpha } from '@/design/tokens';
 import { Btn, Glow, SHADOW_SM } from '@/design/ui';
-import type { ResultReport } from '@/game/online';
-import { dailyMatch, finishDailyAttempt, saveDailyMatch } from '@/game/daily';
+import { playOnline, type ResultReport } from '@/game/online';
+import { finishDailyAttempt } from '@/game/daily';
 import { shareText } from '@/game/share';
-import { ensureUser } from '@/game/user';
 import type { DraftPlayer } from '@/mocks/players';
 
 type Props = {
@@ -37,8 +45,9 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
   const [legendXI, setLegendXI] = useState<LegendResponse | null>(null);
   const [legendMissing, setLegendMissing] = useState(false);
   const [note, setNote] = useState<string | null>(null);
-  // The official score on the server (mini-leagues): sending, sent, or offline.
-  const [posted, setPosted] = useState<DailyScoreResponse | 'sending' | 'offline' | null>(null);
+  // The official result, played and scored on the server (not for a practice try).
+  const [server, setServer] = useState<Extract<PlayResponse, { mode: 'daily' }> | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!legend) return;
@@ -47,32 +56,47 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
       .catch(() => setLegendMissing(true));
   }, [legend]);
 
-  // Without a playable legend the match counts as not won (offline / squad not imported).
-  const final = !legend || match !== null || legendMissing;
-  const outcome = useMemo(() => ({ chemistry, overall, match: legend ? match : undefined }), [chemistry, overall, legend, match]);
-  const checks = dailyChecks(challenge, outcome);
-  const success = final && checks.every((c) => c.ok);
+  const playDaily = async () => {
+    const r = await playOnline({ mode: 'daily', date });
+    if (r.mode !== 'daily') throw new Error('Unexpected answer from the server');
+    setServer(r);
+    return r;
+  };
+  // No legend: the server checks the targets straight away.
+  useEffect(() => {
+    if (practice || legend) return;
+    let live = true;
+    playOnline({ mode: 'daily', date })
+      .then((r) => live && r.mode === 'daily' && setServer(r))
+      .catch((e) => live && setServerError(e instanceof Error ? e.message : 'No connection to the server'));
+    return () => {
+      live = false;
+    };
+  }, [practice, legend, date]);
+
+  // Practice: checked here (nothing is recorded). Official: the server's verdict.
+  const serverMatch = server?.played ? scoreOf(server.played) : null;
+  const final = practice ? !legend || match !== null || legendMissing : !!server;
+  const outcome = useMemo(
+    () => ({
+      chemistry,
+      overall,
+      match: legend ? (practice ? match : serverMatch ? { yours: serverMatch.yours, theirs: serverMatch.theirs } : match) : undefined,
+    }),
+    [chemistry, overall, legend, practice, match, serverMatch],
+  );
+  const checks = server?.checks ?? dailyChecks(challenge, outcome);
+  const success = final && (server ? server.success : checks.every((c) => c.ok));
   const share = dailyShareText(challenge, date, outcome);
-  const score = dailyScore(challenge, outcome).score;
+  const score = server?.score ?? dailyScore(challenge, outcome).score;
 
   const recorded = useRef(false);
   useEffect(() => {
-    if (!final || recorded.current || practice) return;
+    if (!server || recorded.current || practice) return;
     recorded.current = true;
-    finishDailyAttempt(date, success, share);
-    // Mini-leagues: the day's official score (the server checks it against the real challenge).
-    setPosted('sending');
-    ensureUser()
-      .then((u) => submitDailyScore({ userId: u.userId, date, challengeId: challenge.id, outcome }))
-      .then(setPosted)
-      .catch(() => setPosted('offline'));
-    onResult?.({
-      mode: 'daily',
-      title: `Daily ${date}: ${challenge.title}`,
-      detail: `${checks.filter((c) => c.ok).length}/${checks.length} targets`,
-      outcome: success ? 'win' : 'loss',
-    });
-  }, [final, success, checks, share, date, challenge, onResult, practice, outcome]);
+    finishDailyAttempt(date, server.success, share);
+    onResult?.(server.report);
+  }, [server, share, date, onResult, practice]);
 
   const rating = legendXI?.xi.length
     ? legendXI.xi.reduce((s, p) => s + (p.rating ?? 50), 0) / legendXI.xi.length
@@ -123,13 +147,14 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
           meta={`${legend.club} ${legend.season} · DAILY CHALLENGE`}
           metaPlayed={`${legend.club} ${legend.season}`}
           simulate={async (you) => {
-            // The day's match is decided at kick-off and kept: leaving mid-match shows the same one again.
-            const kept = practice ? null : dailyMatch(date);
-            if (kept) return kept;
-            const opp = legendXI ?? (await fetchLegend(legend.id));
-            const played = playLocally(you, { name: legend.nickname, xi: opp.xi });
-            if (!practice) saveDailyMatch(date, played);
-            return played;
+            if (practice) {
+              const opp = legendXI ?? (await fetchLegend(legend.id));
+              return playLocally(you, { name: legend.nickname, xi: opp.xi });
+            }
+            // Official: played on the server, which keeps it – asking again shows the same match.
+            const r = await playDaily();
+            if (!r.played) throw new Error('The legend’s squad isn’t available – the match counts as lost.');
+            return r.played;
           }}
           onFinished={() => undefined}
           onNewGame={onHome}
@@ -137,6 +162,11 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
           hideEndBar
           onResult={(r) => setMatch({ yours: r.yours, theirs: r.theirs })}
         />
+      )}
+      {serverError && !server && (
+        <Txt v="bodySemi" color={C.red} style={styles.center}>
+          {serverError}
+        </Txt>
       )}
       {legendMissing && (
         <Txt v="bodySemi" color={C.red} style={styles.center}>
@@ -161,22 +191,18 @@ export function DailyResult({ daily, formation, lineup, overall, chemistry, onHo
                 DAILY SCORE
               </Txt>
               <Txt v="h28" color={C.gold}>
-                {posted && typeof posted === 'object' ? posted.score : score}
+                {score}
                 <Txt v="bodySemi" color={C.textDim}>
                   {' '}
                   / 300
                 </Txt>
               </Txt>
               <Txt v="capBody" color={C.textMuted} style={styles.center}>
-                {posted === 'sending'
-                  ? 'Sending to your mini-leagues…'
-                  : posted === 'offline'
-                    ? 'Offline – the score couldn’t be sent to your mini-leagues.'
-                    : posted && !posted.counted
-                      ? 'Your first result today already counts in the mini-leagues.'
-                      : posted && posted.leagues > 0
-                        ? `Counts in your ${posted.leagues} mini-league${posted.leagues === 1 ? '' : 's'} this week.`
-                        : 'Start a mini-league with friends on the Ranks tab – this score counts there.'}
+                {server && !server.counted
+                  ? 'Your first result today already counts in the mini-leagues.'
+                  : server && server.leagues > 0
+                    ? `Counts in your ${server.leagues} mini-league${server.leagues === 1 ? '' : 's'} this week.`
+                    : 'Start a mini-league with friends on the Ranks tab – this score counts there.'}
               </Txt>
             </View>
           )}

@@ -85,6 +85,9 @@ export type SavedSquadDoc = Omit<SaveSquadRequest, "userId"> & {
   username: string;
   results: SquadResult[];
   createdAt: Date;
+  /** Tournaments played on the server, and extra ones allowed by Second chances (1 + extra in all). */
+  plays?: number;
+  extraPlays?: number;
 };
 
 /** A daily challenge scheduled for a date (admin, JSON import or Claude). */
@@ -97,6 +100,8 @@ export type DailyChallengeDoc = DailyChallenge & {
 /** Head-to-head queue ticket; once matched it holds this player's view of the match. */
 export type H2HTicketDoc = {
   userId: string;
+  /** The saved squad playing (its result is stored there). */
+  squadId?: string;
   side: H2HSide;
   status: "waiting" | "matched" | "expired";
   createdAt: Date;
@@ -114,6 +119,9 @@ export type DailyScoreDoc = {
   overall: number;
   chemistry: number;
   createdAt: Date;
+  /** The day's legend match (played on the server), shown again if the result is asked for twice. */
+  played?: import("@champion/shared").PlayedMatch | null;
+  checks?: { label: string; ok: boolean }[];
 };
 
 /** A private mini-league of friends (joined with its invite code). */

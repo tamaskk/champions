@@ -16,6 +16,7 @@ import {
   type Formation,
   type SavedPlayer,
   type PositionFit,
+  type PlayerRole,
   type TournamentMode,
   type DraftBoostId,
   DRAFT_BOOSTS,
@@ -52,7 +53,7 @@ import { consumeItem, useWallet } from '@/game/wallet';
 import { usePendingChallenge } from '@/game/challenge';
 import { dailyReels, loadDailyDraft, saveDailyDraft, startDailyAttempt } from '@/game/daily';
 import { leagueSeasonTitle, useLeagueSeason } from '@/game/league-season';
-import { clearCurrentSquad, reportResult, setCurrentSquad } from '@/game/online';
+import { clearCurrentSquad, reportResult, secondChanceOnline, setCurrentSquad } from '@/game/online';
 import { kitColor, recordProgress, useProgress } from '@/game/progress';
 import { BenchRow } from '@/components/bench-row';
 import { DraftSettings } from '@/components/draft-settings';
@@ -397,17 +398,36 @@ export default function HomeScreen() {
           players: placed.map((p) => ({ name: p.player.name, league: p.league, club: p.club, decade: p.decade })),
         },
       });
-      // Ready to be saved on the leaderboard.
-      setCurrentSquad({
-        formation,
-        overall: s.overall,
-        rating: s.rating,
-        chemistry: s.chemistry.team,
-        players,
-      });
     }
     setShowSummary(true);
   };
+
+  // The squad the server plays with (and the leaderboard shows): XI in spot order with the captain,
+  // plus the bench. Kept in step with the draft once it is complete; a changed squad is a new one.
+  useEffect(() => {
+    if (squadId === null || !formation || !lineup.every(Boolean)) return;
+    const s = squadSummary(formation, lineupPlayers);
+    const codes = formationLayout(formation).map((x) => x.code);
+    const lineRoles = formationRoles(formation);
+    const saved = (p: DraftPick, spot: string, role: PlayerRole): SavedPlayer => ({
+      spot,
+      role,
+      name: p.player.name,
+      rating: p.player.rating ?? null,
+      club: p.club,
+      decade: p.decade,
+      league: p.league,
+      ...(p.player.id === captainId ? { captain: true } : {}),
+    });
+    setCurrentSquad({
+      formation,
+      overall: s.overall,
+      rating: s.rating,
+      chemistry: s.chemistry.team,
+      players: lineup.map((p, i) => saved(p!, codes[i]!, lineRoles[i]!)),
+      bench: bench.flatMap((p) => (p ? [saved(p, 'SUB', p.player.position)] : [])),
+    });
+  }, [squadId, formation, lineup, lineupPlayers, bench, captainId]);
 
   const dailyRules: DraftRules | undefined = daily
     ? {
@@ -439,7 +459,8 @@ export default function HomeScreen() {
   };
   const takeSecondChance = async () => {
     setOfferSecondChance(false);
-    if (!(await consumeItem('second-chance'))) return closeGame();
+    // The server gives this squad one more tournament (and takes the Second chance from the wallet).
+    if (!(await secondChanceOnline())) return closeGame();
     setFinished(false);
     setTournament(null);
     setShowTournaments(true);

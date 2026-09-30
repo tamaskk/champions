@@ -4,7 +4,8 @@ const GOLD = "#ffc72c";
 const GREEN = "#6ddc9e";
 
 /** Draft screen: a 4-3-3 on the pitch with ratings, chemistry and overall. */
-export function DraftScreen() {
+export function DraftScreen({ animate = false }: { animate?: boolean }) {
+  let n = 0;
   const rows = [
     [["LW", 84], ["ST", 91], ["RW", 86]],
     [["CM", 83], ["CM", 88], ["CM", 82]],
@@ -21,7 +22,11 @@ export function DraftScreen() {
         {rows.map((row, i) => (
           <div key={i} className="relative flex justify-around">
             {row.map(([pos, r], k) => (
-              <div key={k} className="flex flex-col items-center gap-0.5">
+              <div
+                key={k}
+                className={`flex flex-col items-center gap-0.5 ${animate ? "lp-pop" : ""}`}
+                style={animate ? { animationDelay: `${1100 + n++ * 90}ms` } : undefined}
+              >
                 <span className="grid size-8 place-items-center rounded-full border border-white/30 bg-[#0d141e] text-[10px] font-bold" style={{ color: r >= 88 ? GOLD : "#fff" }}>
                   {r}
                 </span>

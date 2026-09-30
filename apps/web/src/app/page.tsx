@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { sans, serif } from "@/components/landing/fonts";
 import { DraftScreen, MatchScreen, TableScreen } from "@/components/landing/screens";
+import { CountUp, LetterReveal, Reveal } from "@/components/landing/motion";
 import { SlotMachine } from "@/components/landing/slot-machine";
 import { Accent, Glass, Icon, Phone, SectionTitle } from "@/components/landing/ui";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
@@ -58,7 +59,7 @@ export default async function LandingPage() {
 
 function Nav() {
   return (
-    <header className="relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
+    <header className="lp-fade-up relative z-20 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
       <a href="#" className="flex items-center gap-2.5" aria-label="Spinvincible">
         <Image src="/logo.png" alt="" width={30} height={30} className="rounded-lg" priority />
         <span className="text-[15px] font-medium tracking-tight">Spinvincible</span>
@@ -76,7 +77,7 @@ function Nav() {
       </nav>
       <a
         href="#join"
-        className="rounded-full bg-white px-4 py-2 text-sm font-medium text-[#0d141e] transition-colors duration-200 hover:bg-[#ffc72c]"
+        className="lp-shine rounded-full bg-white px-4 py-2 text-sm font-medium text-[#0d141e] transition-colors duration-200 hover:bg-[#ffc72c]"
       >
         Join waitlist
       </a>
@@ -87,31 +88,43 @@ function Nav() {
 function Hero({ crowd }: { crowd: number | null }) {
   return (
     <section className="relative mx-auto max-w-7xl px-5 pt-8 pb-24 sm:px-8 lg:pt-12">
-      <div className="grid items-center gap-12 lg:grid-cols-[1fr_440px_1fr] lg:gap-8">
+      {/* Slowly drifting light behind the hero */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 overflow-visible">
+        <div className="lp-aurora absolute top-10 left-1/2 size-[520px] -translate-x-1/2 rounded-full bg-[#3093f8]/[0.13] blur-[110px]" />
+        <div className="lp-aurora absolute top-40 left-[30%] size-[380px] rounded-full bg-[#ffc72c]/[0.07] blur-[100px] [animation-delay:-6s]" />
+        <div className="lp-aurora absolute top-60 right-[18%] size-[340px] rounded-full bg-[#30a46c]/[0.09] blur-[100px] [animation-delay:-12s]" />
+      </div>
+      <div className="relative grid items-center gap-12 lg:grid-cols-[1fr_440px_1fr] lg:gap-8">
         {/* Left: headline */}
         <div className="lg:self-start lg:pt-6">
           <h1 className="text-[clamp(2.8rem,5.4vw,4.35rem)] leading-[0.98] font-light tracking-[-0.02em]">
-            Spin. Draft.
-            <br />
-            <Accent>Go unbeaten.</Accent>
+            <span className="lp-line">
+              <span style={{ animationDelay: "150ms" }}>Spin. Draft.</span>
+            </span>
+            <span className="lp-line">
+              <span style={{ animationDelay: "320ms" }}>
+                <Accent>Go unbeaten.</Accent>
+              </span>
+            </span>
           </h1>
-          <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-white/60">
+          <p className="lp-fade-up mt-5 max-w-sm text-[15px] leading-relaxed text-white/60" style={{ animationDelay: "550ms" }}>
             An all-time football XI, built one spin at a time from real squads – 1960 to today.
           </p>
         </div>
 
         {/* Centre: the phone with floating glass cards (kept inside this column) */}
         <div className="relative mx-auto flex w-full max-w-[440px] justify-center">
-          <div aria-hidden className="absolute -inset-16 -z-10 rounded-full bg-[#3093f8]/10 blur-3xl" />
-          <Phone className="rotate-[-4deg]">
-            <DraftScreen />
-          </Phone>
-          <Glass className="absolute top-16 left-0 hidden w-36 p-3.5 sm:block">
+          <div className="lp-phone-in" style={{ animationDelay: "250ms" }}>
+            <Phone>
+              <DraftScreen animate />
+            </Phone>
+          </div>
+          <Glass className="lp-card-left absolute top-16 left-0 hidden w-36 p-3.5 sm:block" style={{ animationDelay: "900ms, 2.2s" }}>
             <p className="text-[11px] text-white/55">Overall</p>
-            <p className="text-4xl font-light">85.2</p>
+            <CountUp value="85.2" className="block text-4xl font-light" duration={2200} />
             <p className="mt-1 text-[11px] text-[#6ddc9e]">+1.4 this pick</p>
           </Glass>
-          <Glass className="absolute top-1/2 right-0 hidden w-40 p-3.5 sm:block">
+          <Glass className="lp-card-right absolute top-1/2 right-0 hidden w-40 p-3.5 sm:block" style={{ animationDelay: "1150ms, 2.6s" }}>
             <p className="text-[11px] text-white/55">Last spin</p>
             <div className="mt-1.5 flex justify-between text-lg font-light">
               <span>90s</span>
@@ -121,7 +134,7 @@ function Hero({ crowd }: { crowd: number | null }) {
               <span className="text-[#ffc72c]">CB</span>
             </div>
           </Glass>
-          <Glass className="absolute bottom-12 left-0 hidden w-40 p-3.5 sm:block">
+          <Glass className="lp-card-left absolute bottom-12 left-0 hidden w-40 p-3.5 sm:block" style={{ animationDelay: "1350ms, 3s" }}>
             <p className="text-[11px] text-white/55">Chemistry</p>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
               <div className="h-full w-[86%] rounded-full bg-[#6ddc9e]" />
@@ -131,7 +144,7 @@ function Hero({ crowd }: { crowd: number | null }) {
         </div>
 
         {/* Right: pitch and sign-up */}
-        <div className="lg:self-end lg:pb-6">
+        <div className="lp-fade-up lg:self-end lg:pb-6" style={{ animationDelay: "750ms" }}>
           <p className="max-w-sm text-[15px] leading-relaxed text-white/60">
             Spin a decade, a league and a club. Draft a real player from that squad. Eleven picks later – could your XI
             get through a whole season without losing?
@@ -162,7 +175,7 @@ const FEATURES: { title: string; text: string; card: ReactNode }[] = [
       <div className="p-6">
         <div className="flex items-baseline justify-between">
           <p className="text-sm text-white/60">Team chemistry</p>
-          <p className="text-5xl font-light">86</p>
+          <CountUp value="86" className="text-5xl font-light" />
         </div>
         <div className="mt-5 space-y-2.5">
           {[
@@ -239,27 +252,31 @@ function Features() {
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:linear-gradient(transparent,black_15%,black_85%,transparent)]"
       />
       <div className="relative mx-auto max-w-6xl px-5 sm:px-8">
-        <SectionTitle
-          plain="Every pick,"
-          accent="carefully weighed"
-          text="Real squads, a chemistry system and a match engine fitted on 113,000 real games – all behind a single spin."
-        />
+        <Reveal>
+          <SectionTitle
+            plain="Every pick,"
+            accent="carefully weighed"
+            text="Real squads, a chemistry system and a match engine fitted on 113,000 real games – all behind a single spin."
+          />
+        </Reveal>
         <div className="relative mt-20">
-          <div aria-hidden className="absolute top-0 bottom-0 left-1/2 hidden w-px bg-white/10 md:block" />
+          <Reveal variant="draw" className="absolute top-0 bottom-0 left-1/2 hidden w-px bg-gradient-to-b from-white/5 via-white/25 to-white/5 md:block" />
           <div className="space-y-20 md:space-y-28">
             {FEATURES.map((f, i) => (
               <div key={f.title} className="relative grid items-center gap-8 md:grid-cols-2 md:gap-20">
                 <span
                   aria-hidden
-                  className="absolute top-1/2 left-1/2 hidden size-2.5 -translate-1/2 rounded-full border border-white/40 bg-[#0d141e] md:block"
+                  className="lp-pulse absolute top-1/2 left-1/2 hidden size-2.5 -translate-1/2 rounded-full border border-[#6ddc9e]/70 bg-[#0d141e] md:block"
                 />
-                <div className={i % 2 ? "md:order-2" : "md:text-right"}>
+                <Reveal className={i % 2 ? "md:order-2" : "md:text-right"}>
                   <div className={`max-w-sm ${i % 2 ? "" : "md:ml-auto"}`}>
                     <h3 className="text-2xl font-light tracking-tight">{f.title}</h3>
                     <p className="mt-3 text-[15px] leading-relaxed text-white/55">{f.text}</p>
                   </div>
-                </div>
-                <Glass className={i % 2 ? "md:order-1" : ""}>{f.card}</Glass>
+                </Reveal>
+                <Reveal delay={150} className={i % 2 ? "md:order-1" : ""}>
+                  <Glass className="transition-transform duration-500 hover:-translate-y-1">{f.card}</Glass>
+                </Reveal>
               </div>
             ))}
           </div>
@@ -278,11 +295,14 @@ function Steps() {
   return (
     <section id="how" className="relative scroll-mt-10 py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <SectionTitle
-          plain="Spin it once."
-          accent="Eleven times over."
-          text="A draft takes a few minutes. The arguments about it take longer."
-        />
+        <Reveal>
+          <SectionTitle
+            plain="Spin it once."
+            accent="Eleven times over."
+            text="A draft takes a few minutes. The arguments about it take longer."
+          />
+        </Reveal>
+        <Reveal delay={100}>
         <Glass className="mt-14 grid overflow-hidden md:grid-cols-[1fr_auto]">
           <div className="divide-y divide-white/[0.08]">
             {steps.map((s) => (
@@ -303,6 +323,7 @@ function Steps() {
             </Phone>
           </div>
         </Glass>
+        </Reveal>
       </div>
     </section>
   );
@@ -333,34 +354,44 @@ function Orbit() {
   return (
     <section id="modes" className="relative scroll-mt-10 py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <SectionTitle
-          plain="Every match,"
-          accent="your way"
-          text="Play a single match, a full league season or a cup run – and watch it however you like."
-        />
+        <Reveal>
+          <SectionTitle
+            plain="Every match,"
+            accent="your way"
+            text="Play a single match, a full league season or a cup run – and watch it however you like."
+          />
+        </Reveal>
         <div className="relative mt-16 grid items-center gap-10 md:grid-cols-[1fr_auto_1fr]">
           <div className="grid gap-8 md:gap-14">
             {left.map((x, i) => (
-              <div key={x.label} className={i === 1 ? "md:-mr-10" : ""}>
+              <Reveal key={x.label} delay={i * 150} className={i === 1 ? "md:-mr-10" : ""}>
                 <OrbitItem {...x} side="left" />
-              </div>
+              </Reveal>
             ))}
           </div>
           <div className="relative mx-auto">
-            <div aria-hidden className="absolute top-1/2 left-1/2 size-[520px] -translate-1/2 rounded-full border border-white/[0.06]" />
-            <div
-              aria-hidden
-              className="absolute top-1/2 left-1/2 size-[400px] -translate-1/2 rounded-full border border-white/[0.08] bg-white/[0.015]"
-            />
-            <Phone>
-              <MatchScreen />
-            </Phone>
+            {/* Rings turning around the phone, each with a dot riding it */}
+            <div aria-hidden className="absolute top-1/2 left-1/2 size-[520px] -translate-1/2">
+              <div className="lp-spin-slow size-full rounded-full border border-white/[0.06]">
+                <span className="absolute top-0 left-1/2 size-2 -translate-1/2 rounded-full bg-[#ffc72c] shadow-[0_0_14px_#ffc72c]" />
+              </div>
+            </div>
+            <div aria-hidden className="absolute top-1/2 left-1/2 size-[400px] -translate-1/2">
+              <div className="lp-spin-slower size-full rounded-full border border-white/[0.08] bg-white/[0.015]">
+                <span className="absolute bottom-0 left-1/2 size-1.5 -translate-x-1/2 translate-y-1/2 rounded-full bg-[#6ddc9e] shadow-[0_0_12px_#6ddc9e]" />
+              </div>
+            </div>
+            <Reveal>
+              <Phone>
+                <MatchScreen />
+              </Phone>
+            </Reveal>
           </div>
           <div className="grid gap-8 md:gap-14">
             {right.map((x, i) => (
-              <div key={x.label} className={i === 1 ? "md:-ml-10" : ""}>
+              <Reveal key={x.label} delay={i * 150 + 75} className={i === 1 ? "md:-ml-10" : ""}>
                 <OrbitItem {...x} side="right" />
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -379,14 +410,18 @@ function Stats() {
   return (
     <section className="py-24">
       <div className="mx-auto max-w-6xl px-5 sm:px-8">
-        <SectionTitle plain="Built on real football." accent="Decided on the pitch." />
+        <Reveal>
+          <SectionTitle plain="Built on real football." accent="Decided on the pitch." />
+        </Reveal>
         <dl className="mt-16 grid grid-cols-2 gap-x-6 gap-y-12 border-t border-white/10 pt-10 md:grid-cols-4">
-          {stats.map(([label, text, value]) => (
-            <div key={label}>
+          {stats.map(([label, text, value], i) => (
+            <Reveal key={label} delay={i * 120}>
               <dt className="text-sm text-white/85">{label}</dt>
               <dd className="mt-1 text-xs leading-relaxed text-white/45">{text}</dd>
-              <dd className="mt-6 text-5xl font-light tracking-tight">{value}</dd>
-            </div>
+              <dd className="mt-6 text-5xl font-light tracking-tight">
+                <CountUp value={value!} />
+              </dd>
+            </Reveal>
           ))}
         </dl>
       </div>
@@ -398,17 +433,23 @@ function FinalCall() {
   return (
     <section id="join" className="scroll-mt-10 px-5 py-16 sm:px-8">
       <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[36px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.01))] px-6 pt-16 text-center">
-        <SectionTitle plain="Spin your draft." accent="Chase the perfect season." />
-        <div className="mt-8">
+        <Reveal>
+          <SectionTitle plain="Spin your draft." accent="Chase the perfect season." />
+        </Reveal>
+        <Reveal delay={150} className="mt-8">
           <WaitlistForm source="final" align="center" />
-        </div>
+        </Reveal>
         <div className="relative mx-auto mt-14 flex h-[330px] max-w-xl justify-center gap-6 overflow-hidden sm:h-[380px]">
-          <Phone className="w-[230px] translate-y-6 rotate-[-6deg]">
-            <DraftScreen />
-          </Phone>
-          <Phone className="hidden w-[230px] translate-y-14 rotate-[5deg] sm:block">
-            <MatchScreen />
-          </Phone>
+          <Reveal delay={200}>
+            <Phone className="w-[230px] translate-y-6 rotate-[-6deg]">
+              <DraftScreen />
+            </Phone>
+          </Reveal>
+          <Reveal delay={350} className="hidden sm:block">
+            <Phone className="w-[230px] translate-y-14 rotate-[5deg]">
+              <MatchScreen />
+            </Phone>
+          </Reveal>
         </div>
       </div>
     </section>
@@ -473,12 +514,10 @@ function Footer() {
         <p>{DISCLAIMER_SHORT}</p>
       </div>
       {/* The giant wordmark, cut off by the page edge */}
-      <p
-        aria-hidden
-        className="mt-6 -mb-[0.2em] text-center font-[family-name:var(--font-serif)] text-[clamp(4rem,19vw,17rem)] leading-none text-white/90 italic select-none"
-      >
-        Spinvincible
-      </p>
+      <LetterReveal
+        text="Spinvincible"
+        className="mt-6 -mb-[0.2em] text-center font-[family-name:var(--font-serif)] text-[clamp(4rem,19vw,17rem)] leading-none whitespace-nowrap text-white/90 italic select-none"
+      />
     </footer>
   );
 }

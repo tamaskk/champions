@@ -56,7 +56,7 @@ export function WaitlistForm({ source, align = "left" }: { source: string; align
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 cursor-pointer rounded-full bg-white px-5 py-2.5 text-sm font-medium text-[#0d141e] transition-colors duration-200 hover:bg-[#ffc72c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60"
+          className="lp-shine shrink-0 cursor-pointer rounded-full bg-white px-5 py-2.5 text-sm font-medium text-[#0d141e] transition-colors duration-200 hover:bg-[#ffc72c] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60"
         >
           {pending ? "Joining…" : "Join waitlist"}
         </button>

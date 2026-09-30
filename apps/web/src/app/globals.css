@@ -28,3 +28,85 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* ---- Landing page motion (all of it off with prefers-reduced-motion) ---- */
+@keyframes lp-rise {
+  from { transform: translateY(105%); }
+  to { transform: translateY(0); }
+}
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(24px); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes lp-phone-in {
+  from { opacity: 0; transform: translateY(120px) rotate(4deg) scale(0.92); }
+  to { opacity: 1; transform: translateY(0) rotate(-4deg) scale(1); }
+}
+@keyframes lp-card-left {
+  from { opacity: 0; transform: translateX(-60px) scale(0.9); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes lp-card-right {
+  from { opacity: 0; transform: translateX(60px) scale(0.9); filter: blur(10px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes lp-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+@keyframes lp-pop {
+  0% { opacity: 0; transform: scale(0.3); }
+  70% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes lp-aurora {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(8%, 6%) scale(1.15); }
+  66% { transform: translate(-6%, 4%) scale(0.95); }
+}
+@keyframes lp-spin { to { rotate: 360deg; } }
+@keyframes lp-shine {
+  from { transform: translateX(-120%) skewX(-20deg); }
+  to { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes lp-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(109, 220, 158, 0.45); }
+  100% { box-shadow: 0 0 0 14px rgba(109, 220, 158, 0); }
+}
+
+/* Load sequence: a line of the headline rises out of its mask. */
+.lp-line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+.lp-line > span { display: block; animation: lp-rise 1s cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+.lp-fade-up { animation: lp-fade-up 0.9s cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+.lp-phone-in { animation: lp-phone-in 1.3s cubic-bezier(0.2, 0.9, 0.2, 1) both; }
+.lp-card-left { animation: lp-card-left 1s cubic-bezier(0.2, 0.9, 0.2, 1) both, lp-float 6s ease-in-out 2s infinite; }
+.lp-card-right { animation: lp-card-right 1s cubic-bezier(0.2, 0.9, 0.2, 1) both, lp-float 7s ease-in-out 2.4s infinite; }
+.lp-pop { animation: lp-pop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+.lp-aurora { animation: lp-aurora 18s ease-in-out infinite; }
+.lp-spin-slow { animation: lp-spin 40s linear infinite; }
+.lp-spin-slower { animation: lp-spin 70s linear infinite reverse; }
+.lp-pulse { animation: lp-pulse-ring 2.4s ease-out infinite; }
+
+/* Scroll reveal (<Reveal>): visible by default; "armed" (hidden) only by JavaScript, below the fold. */
+.lp-reveal, .lp-draw, .lp-letter { transition: opacity 0.9s cubic-bezier(0.2, 0.9, 0.2, 1), transform 0.9s cubic-bezier(0.2, 0.9, 0.2, 1), filter 0.9s; }
+.lp-draw { transform-origin: top; transition-duration: 2.4s; }
+.lp-reveal[data-state="armed"] { opacity: 0; transform: translateY(40px); filter: blur(10px); }
+.lp-draw[data-state="armed"] { transform: scaleY(0); }
+.lp-letter { display: inline-block; }
+[data-state="armed"] .lp-letter { opacity: 0; transform: translateY(40%); }
+
+/* Primary buttons: a light sweep on hover. */
+.lp-shine { position: relative; overflow: hidden; isolation: isolate; }
+.lp-shine::after {
+  content: ""; position: absolute; inset: 0; width: 40%; z-index: -1;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: translateX(-120%) skewX(-20deg);
+}
+.lp-shine:hover::after { animation: lp-shine 0.8s ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-line > span, .lp-fade-up, .lp-phone-in, .lp-card-left, .lp-card-right, .lp-pop, .lp-aurora, .lp-spin-slow,
+  .lp-spin-slower, .lp-pulse, .lp-shine:hover::after { animation: none !important; }
+  .lp-phone-in { transform: rotate(-4deg); }
+  .lp-reveal, .lp-draw, .lp-letter { opacity: 1 !important; transform: none !important; filter: none !important; transition: none !important; }
+}

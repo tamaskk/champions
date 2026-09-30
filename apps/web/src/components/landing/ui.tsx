@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /** Italic serif accent inside a sans headline ("Spin. Draft. *Go unbeaten.*"). */
 export function Accent({ children }: { children: ReactNode }) {
@@ -6,9 +6,10 @@ export function Accent({ children }: { children: ReactNode }) {
 }
 
 /** Frosted-glass panel. */
-export function Glass({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Glass({ children, className = "", style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
     <div
+      style={style}
       className={`rounded-[22px] border border-white/[0.09] bg-[linear-gradient(160deg,rgba(255,255,255,0.10),rgba(255,255,255,0.03))] shadow-[0_20px_60px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl ${className}`}
     >
       {children}

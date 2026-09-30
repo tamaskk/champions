@@ -8,9 +8,12 @@
     "scheme": "spinvincible",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.tamaskk.champion",
+      "bundleIdentifier": "com.spinvincible.app",
       "supportsTablet": false,
-      "appleTeamId": "DFZXH4SYRV"
+      "appleTeamId": "DFZXH4SYRV",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +23,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.tamaskk.champion",
+      "package": "com.spinvincible.app",
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -46,6 +49,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "3deba9c6-54c0-4fba-b46c-6fe4582b9131"
+      }
     }
   }
 }

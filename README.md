@@ -159,7 +159,7 @@ the server), **data access lives in `apps/web/src/server`**, and **screens live 
 ### Install
 
 ```bash
-git clone https://github.com/tamaskk/champions.git
+git clone https://github.com/tamaskk/spinvincible.git
 cd champions
 pnpm install          # root only; .npmrc uses node-linker=hoisted (required by Metro)
 ```
@@ -184,6 +184,14 @@ The app talks to the live backend (`https://champions-web-amber.vercel.app`) by 
 your local web server instead, put `EXPO_PUBLIC_API_LOCAL=1` in `apps/mobile/.env.local` (the phone
 then calls the Mac running the Expo dev server on port 3100, same Wi-Fi), or set
 `EXPO_PUBLIC_API_URL` to any server. Restart Expo with `npx expo start -c` after changing it.
+
+**Store builds (EAS)** run from `apps/mobile` – its `app.json` and `eas.json` are the only Expo
+config (bundle ID / package `com.spinvincible.app`, EAS project id in `extra.eas`):
+
+```bash
+cd apps/mobile
+npx eas-cli@latest build --profile production --platform ios   # or android / all
+```
 
 ### Data
 

@@ -13,7 +13,7 @@ import { AccountCard } from '@/components/account-card';
 import { Shop } from '@/components/shop';
 import { TeamCrest } from '@/components/team-crest';
 import { shareText } from '@/game/share';
-import { restoreUser, useUser } from '@/game/user';
+import { createBackupCode, restoreUser, useUser } from '@/game/user';
 import { refreshWallet, useWallet } from '@/game/wallet';
 import {
   ACHIEVEMENTS,
@@ -56,7 +56,7 @@ export default function ProfileScreen() {
   const user = useUser();
   const owned = wallet?.owned ?? [];
   const [showShop, setShowShop] = useState(false);
-  const [showCode, setShowCode] = useState(false);
+  const [backupCode, setBackupCode] = useState<string | null>(null);
   const [restore, setRestore] = useState('');
   const [restoreNote, setRestoreNote] = useState<string | null>(null);
   const kits = [
@@ -395,24 +395,35 @@ export default function ProfileScreen() {
           <SectionTitle icon="verified" iconColor={C.green} title="Account backup" />
           <View style={styles.clubCard}>
             <Txt v="body" color={C.textMuted}>
-              Your account (@{user?.username ?? '…'}, coins, saved squads) is tied to a secret code. Keep it
-              somewhere safe to restore the account on a new phone. Never share it with anyone.
+              A backup code restores @{user?.username ?? '…'} (coins, saved squads) on a new phone, or resets a
+              forgotten password. It&apos;s shown once – save it somewhere safe and never share it. Making a new
+              one switches the old one off.
             </Txt>
-            {showCode && user ? (
+            {backupCode ? (
               <Txt v="bodyBold" selectable style={styles.code}>
-                {user.userId}
+                {backupCode}
               </Txt>
             ) : null}
             <View style={styles.chips}>
-              <Btn kind="dark" label={showCode ? 'HIDE CODE' : 'SHOW CODE'} height={40} labelType="capUpper" onPress={() => setShowCode((x) => !x)} />
-              {showCode && user && (
+              <Btn
+                kind="dark"
+                label={backupCode ? 'NEW CODE' : 'CREATE BACKUP CODE'}
+                height={40}
+                labelType="capUpper"
+                onPress={async () => {
+                  const code = await createBackupCode();
+                  setBackupCode(code);
+                  setRestoreNote(code ? null : 'Couldn’t create a code – check your connection.');
+                }}
+              />
+              {backupCode && (
                 <Btn
                   kind="dark"
                   icon="share"
                   label="SAVE"
                   height={40}
                   labelType="capUpper"
-                  onPress={() => shareText(`Spinvincible account backup code (keep it secret): ${user.userId}`)}
+                  onPress={() => shareText(`Spinvincible account backup code (keep it secret): ${backupCode}`)}
                 />
               )}
             </View>
@@ -430,11 +441,11 @@ export default function ProfileScreen() {
               kind="blue"
               label="RESTORE ACCOUNT"
               height={44}
-              disabled={restore.trim().length < 36}
+              disabled={restore.replace(/[^A-Za-z0-9]/g, '').length < 20}
               onPress={async () => {
-                const ok = await restoreUser(restore);
-                setRestoreNote(ok ? 'Account restored.' : 'Unknown code (or offline).');
-                if (ok) {
+                const r = await restoreUser(restore);
+                setRestoreNote(r.ok ? 'Account restored.' : (r.error ?? 'Unknown code (or offline).'));
+                if (r.ok) {
                   setRestore('');
                   await refreshWallet();
                 }

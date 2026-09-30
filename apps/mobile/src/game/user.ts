@@ -9,22 +9,28 @@ import {
   requestPasswordReset,
   resetPasswordRequest,
   fetchProfile,
-  fetchWallet,
+  legacySessionRequest,
   loginAccount,
+  logoutRequest,
+  newRecoveryCode,
   registerAccount,
+  restoreRequest,
 } from '@/api/client';
+import { setAuthToken } from '@/api/auth-token';
 
 import { eraseDeviceData, loadJSON, saveJSON } from './storage';
 
 /**
- * Your online identity: a secret id and a generated username, created on first launch and kept
- * on the device. Registering adds email, password and name to it; logging in on another device
- * brings the same account there.
+ * Your online identity: an account id, a generated username and this device's session token (sent
+ * with every request – the id alone signs nobody in). Created on first launch; registering adds
+ * email, password and name; logging in or restoring with the backup code brings the account to
+ * another device.
  */
 
-export type User = { userId: string; username: string; name?: string | null; email?: string | null };
+export type User = { userId: string; username: string; name?: string | null; email?: string | null; token?: string };
 
 let user: User | null = loadJSON<User>('user');
+setAuthToken(user?.token);
 let pending: Promise<User> | null = null;
 const listeners = new Set<() => void>();
 
@@ -38,47 +44,69 @@ export function useUser(): User | null {
   );
 }
 
-/** The saved user, or a new one from the server (once; retried on the next call if offline). */
-export function ensureUser(): Promise<User> {
-  if (user) return Promise.resolve(user);
-  pending ??= createUser()
-    .then((u) => {
-      user = { userId: u.userId, username: u.username };
-      saveJSON('user', user);
-      listeners.forEach((l) => l());
-      return user;
-    })
-    .finally(() => {
-      pending = null;
-    });
-  return pending;
-}
-
-/**
- * Account backup: the userId is the key to the online account (username, leaderboard squads,
- * coins). Entering it on another device restores that account there; checked with the server.
- */
-export async function restoreUser(code: string): Promise<boolean> {
-  const userId = code.trim();
-  if (!/^[0-9a-f-]{36}$/i.test(userId)) return false;
-  try {
-    const wallet = await fetchWallet(userId);
-    user = { userId, username: wallet.username };
-    saveJSON('user', user);
-    listeners.forEach((l) => l());
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const setUser = (next: User | null) => {
   user = next;
+  setAuthToken(next?.token);
   saveJSON('user', user);
   listeners.forEach((l) => l());
 };
 
-const asUser = (p: AuthProfile): User => ({ userId: p.userId, username: p.username, name: p.name, email: p.email });
+/**
+ * The signed-in user: the saved one, a saved one from before sessions moved onto a token (once), or
+ * a new guest from the server. Retried on the next call if offline.
+ */
+export function ensureUser(): Promise<User> {
+  if (user?.token) return Promise.resolve(user);
+  pending ??= (async () => {
+    if (user && !user.token) {
+      try {
+        const r = await legacySessionRequest(user.userId);
+        setUser({ ...user, token: r.token });
+        return user!;
+      } catch {
+        // Refused (the account already has sessions): this install must log in again.
+        setUser(null);
+      }
+    }
+    const u = await createUser();
+    setUser({ userId: u.userId, username: u.username, token: u.token });
+    return user!;
+  })().finally(() => {
+    pending = null;
+  });
+  return pending;
+}
+
+/** Restores an account on this device with its backup code (from Profile → Account backup). */
+export async function restoreUser(code: string): Promise<AuthResult> {
+  try {
+    const r = await restoreRequest(code);
+    if ('error' in r) return { ok: false, error: r.error };
+    setUser(asUser(r));
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No connection to the server' };
+  }
+}
+
+/** A new backup code for this account (the previous one stops working). Shown once. */
+export async function createBackupCode(): Promise<string | null> {
+  try {
+    await ensureUser();
+    return (await newRecoveryCode()).code;
+  } catch {
+    return null;
+  }
+}
+
+/** A profile from the server; keeps this device's token unless the answer brings a new one. */
+const asUser = (p: AuthProfile): User => ({
+  userId: p.userId,
+  username: p.username,
+  name: p.name,
+  email: p.email,
+  token: p.token ?? (user?.userId === p.userId ? user.token : undefined),
+});
 
 export type AuthResult = { ok: true } | { ok: false; error?: string; errors?: Record<string, string> };
 
@@ -108,8 +136,9 @@ export async function login(email: string, password: string): Promise<AuthResult
   }
 }
 
-/** Logs out: the next online action starts a fresh guest account on this device. */
+/** Logs out (the server ends this device's session); the next online action starts a fresh guest. */
 export function logout() {
+  void logoutRequest().catch(() => undefined);
   setUser(null);
 }
 

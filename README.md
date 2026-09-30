@@ -268,6 +268,7 @@ change goes into the coin ledger as "admin" with a note.
 | `POST /api/wallet · wallet/claim · buy · use · invite · rename` | Coin wallet (server-side) |
 | `POST /api/auth/forgot`, `/api/auth/reset` | Forgotten password: emailed 6-digit code, or the account's backup code |
 | `POST /api/squads/:id/play` · `second-chance` · `list` | Tournaments played on the server with the saved squad (result stored there); one more per Second chance; put an unlisted squad on the leaderboard |
+| `POST /api/auth/logout` · `recovery` · `restore` · `session` | Sign this device out; new backup code; restore with it; one-time token for installs from before sessions. Every request is signed in with `Authorization: Bearer <token>` |
 | `POST /api/auth/delete` | Deletes the account and all its data (password for registered accounts) |
 | `/api/leagues · leagues/create · join · leave · detail` | Mini-leagues (daily scores are written by the server when it plays the Daily) |
 | `POST /api/iap/revenuecat` | Store purchase webhook |

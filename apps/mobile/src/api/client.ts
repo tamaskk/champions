@@ -37,6 +37,7 @@ import {
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
+import { authHeaders } from '@/api/auth-token';
 import type { DraftPlayer } from '@/mocks/players';
 
 /** The live backend (Vercel). */
@@ -149,7 +150,7 @@ export async function fetchCupField(season: number): Promise<CupFieldResponse> {
 async function postJSON<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
@@ -160,7 +161,7 @@ async function postJSON<T>(path: string, body: unknown): Promise<T> {
 async function postJSONMessage<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${apiBaseUrl()}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
   const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
@@ -182,7 +183,7 @@ export const fetchMiniLeague = (userId: string, id: string, week?: string) =>
   postJSONMessage<MiniLeagueDetail>('/api/leagues/detail', { userId, id, week });
 
 async function getJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${apiBaseUrl()}${path}`);
+  const res = await fetch(`${apiBaseUrl()}${path}`, { headers: authHeaders() });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
 }
@@ -224,10 +225,9 @@ export const fetchDaily = (date: string) => getJSON<DailyResponse>(`/api/daily?d
 /** Joins the matchmaking queue with your XI. */
 export const h2hQueue = (body: H2HQueueRequest) => postJSON<H2HTicket>('/api/h2h/queue', body);
 /** Polls a queue ticket. */
-export const h2hTicket = (id: string, userId: string) =>
-  getJSON<H2HTicket>(`/api/h2h/ticket/${id}?userId=${encodeURIComponent(userId)}`);
+export const h2hTicket = (id: string) => getJSON<H2HTicket>(`/api/h2h/ticket/${id}`);
 /** Nobody came: play another player's saved squad instead. */
-export const h2hGhost = (id: string, userId: string) => postJSON<H2HTicket>(`/api/h2h/ticket/${id}/ghost`, { userId });
+export const h2hGhost = (id: string) => postJSON<H2HTicket>(`/api/h2h/ticket/${id}/ghost`, {});
 
 /** A player's career season by season (player card). Real players only. */
 export async function fetchPlayerCareer(player: { tmId?: number | null; name: string }): Promise<PlayerCareer> {
@@ -275,6 +275,15 @@ export const requestPasswordReset = (email: string) =>
 /** New password with the emailed code or the account's backup code; logs in on success. */
 export const resetPasswordRequest = (body: { email: string; code?: string; backupCode?: string; newPassword: string }) =>
   postJSON<AuthProfile | { error: string }>('/api/auth/reset', body);
+/** Signs this device out on the server (its token stops working). */
+export const logoutRequest = () => postJSON<{ ok: true }>('/api/auth/logout', {});
+/** A new backup code for the signed-in account (shown once). */
+export const newRecoveryCode = () => postJSONMessage<{ code: string }>('/api/auth/recovery', {});
+/** Restores an account on this device with its backup code (a new session). */
+export const restoreRequest = (code: string) => postJSONMessage<AuthProfile | { error: string }>('/api/auth/restore', { code });
+/** One-time move of an install from before sessions onto a token. */
+export const legacySessionRequest = (userId: string) =>
+  postJSON<AuthProfile>('/api/auth/session', { userId });
 /** Deletes the account and all its data on the server (password required for registered accounts). */
 export const deleteAccountRequest = (userId: string, password?: string) =>
   postJSON<{ ok: boolean; error?: string }>('/api/auth/delete', { userId, password });

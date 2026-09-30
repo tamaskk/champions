@@ -23,10 +23,17 @@ import { ObjectId, type WithId } from "mongodb";
 import { randomUUID } from "node:crypto";
 
 import { savedSquads, users, type SavedSquadDoc } from "./db";
+import { createSession } from "./session";
 import { squadInDecade } from "./squad-data";
 
 export class BadRequest extends Error {
   name = "BadRequest";
+  status = 400;
+}
+
+/** No valid session token. */
+export class Unauthorized extends BadRequest {
+  status = 401;
 }
 
 const num = (x: unknown, lo: number, hi: number) =>
@@ -40,8 +47,8 @@ export async function createUser(): Promise<UserResponse> {
   for (let tries = 0; tries < 8; tries++) {
     const user = { userId: randomUUID(), username: generateUsername(), createdAt: new Date() };
     try {
-      await col.insertOne(user);
-      return { userId: user.userId, username: user.username };
+      await col.insertOne({ ...user, sessionsIssued: true });
+      return { userId: user.userId, username: user.username, token: await createSession(user.userId) };
     } catch {
       // Username taken (unique index): try another.
     }
@@ -51,7 +58,7 @@ export async function createUser(): Promise<UserResponse> {
 
 /** The player behind a userId (400 if unknown). */
 export async function userOf(userId: unknown) {
-  if (typeof userId !== "string") throw new BadRequest("userId missing");
+  if (typeof userId !== "string") throw new Unauthorized("Not signed in – please restart the app");
   const user = await (await users()).findOne({ userId });
   if (!user) throw new BadRequest("Unknown user");
   return user;

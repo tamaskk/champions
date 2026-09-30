@@ -43,6 +43,10 @@ export type UserDoc = {
   /** "scrypt$<salt hex>$<hash hex>" – never the password itself. */
   passwordHash?: string;
   registeredAt?: Date;
+  /** Hash of the account's backup (recovery) code; restoring with it signs a device in. */
+  recoveryHash?: string | null;
+  /** A session was issued for this account (after that, the userId alone no longer signs in). */
+  sessionsIssued?: boolean;
   /** Failed logins in a row, and a lock after too many. */
   failedLogins?: number;
   lockedUntil?: Date | null;
@@ -109,6 +113,14 @@ export type H2HTicketDoc = {
 };
 
 // Reuse one client across hot reloads in dev and across invocations on Vercel.
+/** A signed-in device: the hash of its bearer token (the token itself never touches the database). */
+export type SessionDoc = {
+  tokenHash: string;
+  userId: string;
+  createdAt: Date;
+  lastUsedAt: Date;
+};
+
 /** A player's official Daily Challenge result (one per day; the first one counts). */
 export type DailyScoreDoc = {
   userId: string;
@@ -173,6 +185,11 @@ async function connect(uri: string): Promise<Db> {
     { key: { userId: 1, key: 1 }, unique: true },
     { key: { userId: 1, source: 1, createdAt: -1 } },
   ]);
+  await db.collection<SessionDoc>("sessions").createIndexes([
+    { key: { tokenHash: 1 }, unique: true },
+    { key: { userId: 1 } },
+  ]);
+  await db.collection<UserDoc>("users").createIndex({ recoveryHash: 1 }, { partialFilterExpression: { recoveryHash: { $type: "string" } } });
   await db.collection<WaitlistDoc>("waitlist").createIndexes([{ key: { email: 1 }, unique: true }, { key: { createdAt: -1 } }]);
   await db.collection<DailyScoreDoc>("dailyScores").createIndexes([
     { key: { userId: 1, date: 1 }, unique: true },
@@ -228,6 +245,10 @@ export async function wallets(): Promise<Collection<WalletDoc>> {
 
 export async function coinLedger(): Promise<Collection<LedgerDoc>> {
   return (await getDb()).collection<LedgerDoc>("coinLedger");
+}
+
+export async function sessions(): Promise<Collection<SessionDoc>> {
+  return (await getDb()).collection<SessionDoc>("sessions");
 }
 
 export async function waitlist(): Promise<Collection<WaitlistDoc>> {

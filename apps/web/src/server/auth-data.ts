@@ -13,6 +13,8 @@ import { promisify } from "node:util";
 
 import { coinLedger, dailyScores, h2hTickets, miniLeagues, savedSquads, users, wallets, type UserDoc } from "./db";
 import { BadRequest, userOf } from "./leaderboard-data";
+import { createSession, revokeSessions, revokeToken } from "./session";
+import type { Auth } from "./cors";
 import { emailConfigured, sendEmail } from "./mailer";
 
 /**
@@ -117,7 +119,8 @@ export async function login(body: Partial<LoginRequest> | null): Promise<AuthPro
     return { error: WRONG };
   }
   await col.updateOne({ userId: user.userId }, { $set: { failedLogins: 0, lockedUntil: null } });
-  return profileOf(user);
+  await col.updateOne({ userId: user.userId }, { $set: { sessionsIssued: true } });
+  return { ...profileOf(user), token: await createSession(user.userId) };
 }
 
 export async function me(body: { userId?: unknown } | null): Promise<AuthProfile> {
@@ -126,12 +129,15 @@ export async function me(body: { userId?: unknown } | null): Promise<AuthProfile
 
 export async function changePassword(
   body: { userId?: unknown; oldPassword?: string; newPassword?: string } | null,
+  auth?: Auth,
 ): Promise<{ ok: boolean; error?: string }> {
   const user = await userOf(body?.userId);
   if (!user.passwordHash) return { ok: false, error: "Register first" };
   if (!(await checkPassword(body?.oldPassword ?? "", user.passwordHash))) return { ok: false, error: "Current password is wrong" };
   if ((body?.newPassword ?? "").length < PASSWORD_MIN) return { ok: false, error: `At least ${PASSWORD_MIN} characters` };
   await (await users()).updateOne({ userId: user.userId }, { $set: { passwordHash: await hashPassword(body!.newPassword!) } });
+  // Other devices must log in again with the new password.
+  await revokeSessions(user.userId, auth?.token);
   return { ok: true };
 }
 
@@ -170,6 +176,7 @@ export async function deleteAccount(body: { userId?: unknown; password?: string 
     // Friends this player invited keep their coins (and stay "invited"), without the link to this account.
     (await wallets()).updateMany({ invitedBy: userId }, { $set: { invitedBy: "deleted-account" } }),
   ]);
+  await revokeSessions(userId);
   await (await users()).deleteOne({ userId });
   return { ok: true };
 }
@@ -248,11 +255,11 @@ export async function resetPassword(
   const invalid = { error: "That code is wrong or has expired" };
   if (!user?.passwordHash) return invalid;
 
-  const backup = (body?.backupCode ?? "").trim();
+  const backup = normalizeRecovery(body?.backupCode ?? "");
   if (backup) {
-    const a = Buffer.from(backup);
-    const b = Buffer.from(user.userId);
-    if (a.length !== b.length || !timingSafeEqual(a, b)) return { error: "That backup code doesn't belong to this email" };
+    if (!user.recoveryHash || recoveryHashOf(backup) !== user.recoveryHash) {
+      return { error: "That backup code doesn't belong to this email" };
+    }
   } else {
     const code = (body?.code ?? "").replace(/\D/g, "");
     if (!user.resetCodeHash || !user.resetExpires || user.resetExpires < new Date()) return invalid;
@@ -264,5 +271,57 @@ export async function resetPassword(
     }
   }
   await setNewPassword(user.userId, newPassword);
-  return profileOf(user);
+  // A forgotten password may mean a lost device: every other session ends, this one starts.
+  await revokeSessions(user.userId);
+  await col.updateOne({ userId: user.userId }, { $set: { sessionsIssued: true } });
+  return { ...profileOf(user), token: await createSession(user.userId) };
+}
+
+// ---- Sessions: log out, backup (recovery) code, and moving old installs onto tokens.
+
+/** Logs this device out (its token stops working). */
+export async function logout(_body: unknown, auth?: Auth): Promise<{ ok: true }> {
+  await revokeToken(auth?.token ?? null);
+  return { ok: true };
+}
+
+const RECOVERY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const normalizeRecovery = (code: string) => code.toUpperCase().replace(/[^A-Z0-9]/g, "");
+const recoveryHashOf = (normalized: string) => createHash("sha256").update(`recovery:${normalized}`).digest("hex");
+
+/**
+ * A new backup code for the signed-in account (the old one stops working). Shown once: with it the
+ * account can be restored on another device, or its password reset. 20 characters ≈ 99 bits.
+ */
+export async function newRecoveryCode(body: { userId?: unknown } | null): Promise<{ code: string }> {
+  const user = await userOf(body?.userId);
+  const raw = Array.from({ length: 20 }, () => RECOVERY_ALPHABET[randomInt(RECOVERY_ALPHABET.length)]).join("");
+  await (await users()).updateOne({ userId: user.userId }, { $set: { recoveryHash: recoveryHashOf(raw) } });
+  return { code: raw.match(/.{5}/g)!.join("-") };
+}
+
+/** Restores an account on this device with its backup code: a new session. */
+export async function restoreWithCode(body: { code?: string } | null): Promise<AuthProfile | { error: string }> {
+  const code = normalizeRecovery(body?.code ?? "");
+  if (code.length !== 20) return { error: "A backup code has 20 letters and digits" };
+  const user = await (await users()).findOne({ recoveryHash: recoveryHashOf(code) });
+  if (!user) return { error: "That backup code doesn't match an account" };
+  await (await users()).updateOne({ userId: user.userId }, { $set: { sessionsIssued: true } });
+  return { ...profileOf(user), token: await createSession(user.userId) };
+}
+
+/**
+ * Moving an install from before sessions onto a token: it still knows only its userId. Allowed once
+ * per account – after that the userId alone never signs anyone in again.
+ */
+export async function legacySession(body: { userId?: unknown } | null): Promise<AuthProfile | { error: string }> {
+  if (typeof body?.userId !== "string") return { error: "userId" };
+  const col = await users();
+  const user = await col.findOneAndUpdate(
+    { userId: body.userId, sessionsIssued: { $ne: true } },
+    { $set: { sessionsIssued: true } },
+    { returnDocument: "after" },
+  );
+  if (!user) return { error: "Please log in again" };
+  return { ...profileOf(user), token: await createSession(user.userId) };
 }

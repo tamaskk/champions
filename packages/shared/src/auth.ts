@@ -9,9 +9,12 @@ export type AuthProfile = {
   username: string;
   name: string | null;
   email: string | null;
+  /** A new session's bearer token (log in, reset, restore). */
+  token?: string;
 };
 
-export type RegisterRequest = { userId: string; email: string; password: string; name: string; username: string };
+/** userId comes from the session (the guest account being registered). */
+export type RegisterRequest = { userId?: string; email: string; password: string; name: string; username: string };
 export type LoginRequest = { email: string; password: string };
 
 export const PASSWORD_MIN = 8;

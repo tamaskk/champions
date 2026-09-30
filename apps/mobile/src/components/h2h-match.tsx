@@ -79,7 +79,7 @@ export function H2HMatch({
   useEffect(() => {
     if (!ticketId || !userId.current) return;
     const poll = setInterval(() => {
-      h2hTicket(ticketId, userId.current!)
+      h2hTicket(ticketId)
         .then(onTicket)
         .catch(() => undefined);
     }, POLL_MS);
@@ -93,7 +93,7 @@ export function H2HMatch({
   const ghost = async () => {
     if (search.status !== 'expired' || !userId.current) return;
     try {
-      const t = await h2hGhost(search.ticketId, userId.current);
+      const t = await h2hGhost(search.ticketId);
       if (t.status === 'matched') onTicket(t);
       else setSearch({ status: 'error' });
     } catch {

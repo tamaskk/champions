@@ -8,7 +8,7 @@ import type { MatchSide } from './match';
  */
 
 /** POST /api/users – a new player: a secret id (kept on the device) and a public username. */
-export type UserResponse = { userId: string; username: string };
+export type UserResponse = { userId: string; username: string; /** Bearer token of this device's session. */ token: string };
 
 export type SavedPlayer = {
   /** Detailed position of his spot (e.g. "CB"); players are in formation spot order. */

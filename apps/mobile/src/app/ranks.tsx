@@ -56,15 +56,14 @@ export default function RanksScreen() {
     ensureUser().catch(() => undefined);
   }, []);
 
-  // A link (e.g. "Saved on the leaderboard" → open) opens that squad.
-  useEffect(() => {
-    if (params.squad) setOpenId(params.squad);
-  }, [params.squad]);
+  // A link opens a squad: "Saved on the leaderboard" → open (?squad=ID) or a shared "Challenge this
+  // XI" (?challenge=ID). Derived from the route, not copied into state; closing it clears the link.
+  const linkedId = params.challenge ?? params.squad ?? null;
+  const shownId = openId ?? linkedId;
 
-  // A shared link "Challenge this XI" (spinvincible://ranks?challenge=ID): the squad waits for your next draft.
+  // A challenge link: the squad waits for your next draft (an external store, set when it arrives).
   useEffect(() => {
     if (!params.challenge) return;
-    setOpenId(params.challenge);
     fetchSquadDetail(params.challenge)
       .then(setPendingChallenge)
       .catch(() => undefined);
@@ -204,9 +203,10 @@ export default function RanksScreen() {
         <LegalNote />
       </ScrollView>
 
-      {openId && (
+      {shownId && (
         <SquadView
-          id={openId}
+          key={shownId}
+          id={shownId}
           mine={(u) => !!user && u === user.username}
           onClose={() => {
             setOpenId(null);
@@ -227,9 +227,9 @@ function SquadView({ id, mine, onClose }: { id: string; mine: (username: string)
   const pending = usePendingChallenge();
   useHideTabBar(true);
 
+  // Mounted with key={id}: a new squad starts from a fresh (loading) state.
   useEffect(() => {
     let live = true;
-    setSquad(null);
     fetchSquadDetail(id)
       .then((s) => live && setSquad(s))
       .catch(() => live && setSquad('error'));

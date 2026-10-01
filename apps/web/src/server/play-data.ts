@@ -1,38 +1,27 @@
 import "server-only";
 
 import {
-  YOUR_ID,
-  cupReport,
   dailyChecks,
   dailyScore,
   decadeLabel,
   DECADES,
   LEAGUE_ADJECTIVES,
-  LEAGUES,
-  leagueReport,
   legendById,
-  legendReport,
   matchReport,
-  playLegendTie,
   playMatch,
-  pointsForWin,
   savedSquadSide,
   scoreOf,
-  seasonLabel,
   sideFromLineup,
-  simulateCup,
-  simulateSeason,
-  squadInsight,
+  simulateTournament,
+  PlayError,
   todayKey,
-  weakestClub,
-  type CupTeam,
   type League,
   type MatchSide,
   type PlayRequest,
   type PlayResponse,
-  type SeasonTeam,
   type SecondChanceResponse,
   type SquadResult,
+  type TournamentData,
 } from "@champion/shared";
 import { ObjectId, type WithId } from "mongodb";
 
@@ -49,12 +38,7 @@ import { consumeItem } from "./wallet-data";
 // the saved one (players checked against the database), the random numbers are the server's, and
 // the result is stored on the squad. A squad plays 1 tournament plus one per Second chance.
 
-const avg = (xs: (number | null)[]) => {
-  const k = xs.filter((x): x is number => x !== null);
-  return k.length ? k.reduce((a, b) => a + b, 0) / k.length : null;
-};
 const oid = (id: string) => (ObjectId.isValid(id) ? new ObjectId(id) : null);
-const isLeague = (x: unknown): x is League => (LEAGUES as readonly unknown[]).includes(x);
 const cleanName = (x: unknown) =>
   typeof x === "string" && x.trim() ? x.replace(/\s+/g, " ").trim().slice(0, 30) : "Your XI";
 
@@ -113,84 +97,26 @@ export async function playTournament(squadId: string, body: PlayRequest | null):
 }
 
 async function simulate(body: PlayRequest, you: MatchSide, player: { userId: string; username: string }): Promise<PlayResponse> {
-  switch (body.mode) {
-    case "match": {
-      if (!isLeague(body.league)) throw new BadRequest("league");
-      const opp = await opponentXI(body.league, Number(body.season), String(body.clubSlug));
-      if (!opp || opp.xi.length === 0) throw new BadRequest("No squad for that club season");
-      const played = playMatch(you, { name: opp.club, xi: opp.xi, factor: 1 });
-      return { mode: "match", played, report: matchReport(played, `vs ${opp.club} ${seasonLabel(opp.season)}`) };
-    }
-    case "challenge": {
-      const _id = oid(String(body.opponentSquadId));
-      const opp = _id ? await (await savedSquads()).findOne({ _id }) : null;
-      if (!opp) throw new BadRequest("That squad doesn't exist");
-      const played = playMatch(you, savedSquadSide(opp));
-      const { yours, theirs, outcome } = scoreOf(played);
-      if (outcome === "win") notifyBeaten(opp.userId, player.userId, player.username, `${yours}–${theirs}`);
-      return { mode: "challenge", played, report: matchReport(played, `Challenge vs @${opp.username}`) };
-    }
-    case "legend": {
-      const legend = legendById(String(body.legendId));
-      const xi = legend ? await legendXI(legend.id) : null;
-      if (!legend || !xi || xi.xi.length === 0) throw new BadRequest("That legend can't be played yet");
-      const them = { name: legend.nickname, xi: xi.xi, factor: 1 };
-      const title = `vs ${legend.nickname} (${legend.club} ${seasonLabel(legend.season)})`;
-      if (body.format === "single") {
-        const played = playMatch(you, them);
-        return { mode: "legend", tie: null, played, report: { ...matchReport(played, title), mode: "legend" } };
-      }
-      const tie = playLegendTie(you, them);
-      return { mode: "legend", tie, played: null, report: legendReport(tie, title) };
-    }
-    case "league": {
-      if (!isLeague(body.league)) throw new BadRequest("league");
-      const season = Number(body.season);
-      const rows = await leagueTable(body.league, season);
-      const replaced = weakestClub(rows);
-      const xis = await seasonXIs(body.league, season);
-      if (!replaced || !xis) throw new BadRequest("No data for that season");
-      const teams: SeasonTeam[] = xis.clubs
-        .filter((c) => c.clubSlug !== replaced.clubSlug && c.xi.length > 0)
-        .map((c) => ({ id: c.clubSlug, name: c.club, xi: c.xi, factor: 1 }));
-      const all = [...teams, { ...you, id: YOUR_ID }];
-      const result = simulateSeason(all, pointsForWin(body.league, season), Math.random, { detailFor: YOUR_ID });
-      return {
-        mode: "league",
-        result,
-        teams: all.map((t) => ({ id: t.id, name: t.name, rating: avg(t.xi.map((p) => p.rating)) })),
-        replaced: replaced.club,
-        insight: squadInsight(you, teams),
-        bench: you.bench?.length ?? 0,
-        report: leagueReport(result, body.league, season),
-      };
-    }
-    case "cup": {
-      const season = Number(body.season);
-      const field = await cupField(season);
-      if (!field) throw new BadRequest("No field for that season");
-      const teams: CupTeam[] = [
-        { ...you, id: YOUR_ID, league: null },
-        ...field.clubs
-          .filter((c) => c.xi.length > 0)
-          .map((c) => ({ id: `${c.league}|${c.clubSlug}`, name: c.club, xi: c.xi, factor: 1, league: c.league, elo: c.elo })),
-      ].slice(0, 32);
-      const result = simulateCup(teams);
-      const facedIds = new Set(
-        result.matches.flatMap((m) => (m.home === YOUR_ID ? [m.away] : m.away === YOUR_ID ? [m.home] : [])),
-      );
-      return {
-        mode: "cup",
-        result,
-        teams: teams.map((t) => ({ id: t.id, name: t.name, league: t.league, elo: t.elo ?? null })),
-        insight: squadInsight(you, teams.filter((t) => facedIds.has(t.id))),
-        report: cupReport(result, season),
-      };
-    }
-    default:
-      throw new BadRequest("mode");
+  if (body.mode === "challenge") {
+    const _id = oid(String(body.opponentSquadId));
+    const opp = _id ? await (await savedSquads()).findOne({ _id }) : null;
+    if (!opp) throw new BadRequest("That squad doesn't exist");
+    const played = playMatch(you, savedSquadSide(opp));
+    const { yours, theirs, outcome } = scoreOf(played);
+    if (outcome === "win") notifyBeaten(opp.userId, player.userId, player.username, `${yours}–${theirs}`);
+    return { mode: "challenge", played, report: matchReport(played, `Challenge vs @${opp.username}`) };
+  }
+  if (body.mode === "daily") throw new BadRequest("mode");
+  // Match, legend, league and cup: the same code the app runs offline, with the database's clubs.
+  try {
+    return await simulateTournament(body, you, DATABASE);
+  } catch (error) {
+    if (error instanceof PlayError) throw new BadRequest(error.message);
+    throw error;
   }
 }
+
+const DATABASE: TournamentData = { opponentXI, leagueTable, seasonXIs, cupField, legendXI };
 
 // ---- The Daily: rules checked, targets from the verified squad, the legend match on the server.
 

@@ -406,8 +406,8 @@ export function useDraft() {
       chemistry: s.chemistry.team,
       players: lineup.map((p, i) => saved(p!, codes[i]!, lineRoles[i]!)),
       bench: bench.flatMap((p) => (p ? [saved(p, 'SUB', p.player.position)] : [])),
-    });
-  }, [squadId, formation, lineup, lineupPlayers, bench, captainId]);
+    }, { formation, lineup: lineupPlayers, bench: benchPlayers });
+  }, [squadId, formation, lineup, lineupPlayers, bench, benchPlayers, captainId]);
 
   const dailyRules: DraftRules | undefined = daily
     ? {

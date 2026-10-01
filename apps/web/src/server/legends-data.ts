@@ -1,24 +1,9 @@
 import "server-only";
 
-import { LEGENDS, legendById, type Legend, type LegendResponse } from "@champion/shared";
+import { LEGENDS, legendById, legendClub, type Legend, type LegendResponse } from "@champion/shared";
 
 import { clubSeasons, squadPlayers } from "./db";
 import { opponentXI } from "./match-data";
-
-/** The club season a legend stands for: slug pattern in that league season, strongest (Elo) first. */
-function pickClub(
-  legend: Legend,
-  candidates: { league: string; season: number; clubSlug: string; elo?: number | null }[],
-) {
-  const slug = new RegExp(legend.slug);
-  const not = legend.notSlug ? new RegExp(legend.notSlug) : null;
-  return (
-    candidates
-      .filter((c) => c.league === legend.league && c.season === legend.season)
-      .filter((c) => slug.test(c.clubSlug) && !not?.test(c.clubSlug))
-      .sort((a, b) => (b.elo ?? 0) - (a.elo ?? 0))[0] ?? null
-  );
-}
 
 async function candidatesFor(legends: readonly Legend[]) {
   return (await clubSeasons())
@@ -33,7 +18,7 @@ async function candidatesFor(legends: readonly Legend[]) {
 export async function legendXI(id: string): Promise<LegendResponse | null> {
   const legend = legendById(id);
   if (!legend) return null;
-  const club = pickClub(legend, await candidatesFor([legend]));
+  const club = legendClub(legend, await candidatesFor([legend]));
   if (!club) return null;
   const xi = await opponentXI(legend.league, legend.season, club.clubSlug);
   if (!xi || xi.xi.length < 11) return null;
@@ -44,7 +29,7 @@ export async function legendXI(id: string): Promise<LegendResponse | null> {
 export async function availableLegends(): Promise<string[]> {
   const candidates = await candidatesFor(LEGENDS);
   const picked = LEGENDS.flatMap((l) => {
-    const club = pickClub(l, candidates);
+    const club = legendClub(l, candidates);
     return club ? [{ id: l.id, league: l.league, season: l.season, clubSlug: club.clubSlug }] : [];
   });
   if (picked.length === 0) return [];

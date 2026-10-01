@@ -6,6 +6,7 @@ import { C, F } from './tokens';
 const GLYPHS = {
   bolt: 59915,
   error: 57344,
+  download: 61584,
   casino: 60224,
   sports_soccer: 59951,
   explore: 59514,

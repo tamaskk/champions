@@ -11,6 +11,7 @@ import { Btn, Chip, Glow, SHADOW_SM, ScreenHeader, SectionTitle } from '@/design
 import { webPageUrl } from '@/api/client';
 import { AccountCard } from '@/components/account-card';
 import { NotificationSettings } from '@/components/notification-settings';
+import { OfflinePackCard } from '@/components/offline-pack-card';
 import { Shop } from '@/components/shop';
 import { TeamCrest } from '@/components/team-crest';
 import { shareText } from '@/game/share';
@@ -162,6 +163,12 @@ export default function ProfileScreen() {
         <View style={styles.gap12}>
           <SectionTitle icon="notifications" iconColor={C.gold} title="Notifications" />
           <NotificationSettings />
+        </View>
+
+        {/* Offline play */}
+        <View style={styles.gap12}>
+          <SectionTitle icon="download" iconColor={C.blueLight} title="Offline play" />
+          <OfflinePackCard />
         </View>
 
         {/* Coins */}

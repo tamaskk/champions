@@ -10,6 +10,7 @@ import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, NAV_ROOM, R, alpha } from '@/design/tokens';
 import { Btn, Chip, SHADOW_SM } from '@/design/ui';
 import { kitColor, useProgress } from '@/game/progress';
+import { usePack } from '@/offline/pack';
 import { formatRating } from '@/utils/rating';
 
 import { BENCH_MIN } from './constants';
@@ -55,6 +56,8 @@ export function DraftBoard({ d, formation }: { d: Draft; formation: Formation })
     toggleCaptain,
     useBench,
   } = d;
+  // Running from the offline pack: nothing of this draft is ranked.
+  const offline = usePack().offline;
   // Kit colour chosen on the profile, for the placed players on the pitch.
   const kit = kitColor(useProgress());
   const { width, height } = useWindowDimensions();
@@ -189,7 +192,7 @@ export function DraftBoard({ d, formation }: { d: Draft; formation: Formation })
           tag={
             daily
               ? 'DAILY CHALLENGE'
-              : `${arcadeTag}${boost ? ` · ⚡ ${DRAFT_BOOSTS[boost].name.toUpperCase()}` : ''}`
+              : `${offline ? 'OFFLINE · UNRANKED · ' : ''}${arcadeTag}${boost ? ` · ⚡ ${DRAFT_BOOSTS[boost].name.toUpperCase()}` : ''}`
           }
         />
       </View>

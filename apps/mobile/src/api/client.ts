@@ -36,10 +36,16 @@ import {
   type SecondChanceResponse,
   type CrashReport,
   type EventsRequest,
+  LEAGUES,
+  lastCompleteSeason,
+  packLegends,
+  packTournamentData,
+  slugify,
 } from '@champion/shared';
 import Constants from 'expo-constants';
 
 import { authHeaders } from '@/api/auth-token';
+import { packCell, packReady, packSeasons, setPackState } from '@/offline/pack';
 import type { DraftPlayer } from '@/mocks/players';
 
 /** The live backend (Vercel). */
@@ -52,7 +58,7 @@ const PRODUCTION_API_URL = 'https://champions-web-amber.vercel.app';
  *    (default 3100 = `pnpm dev:web`), so a phone on the same wifi reaches the local Next server;
  *  - otherwise the live backend.
  */
-function apiBaseUrl(): string {
+export function apiBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL.replace(/\/$/, '');
   if (process.env.EXPO_PUBLIC_API_LOCAL === '1') {
     const host = Constants.expoConfig?.hostUri?.split(':')[0] ?? 'localhost';
@@ -65,15 +71,60 @@ const leagueFromLabel = (label: string) =>
   (Object.keys(LEAGUE_ADJECTIVES) as League[]).find((l) => LEAGUE_ADJECTIVES[l] === label);
 const decadeFromLabel = (label: string) => DECADES.find((d) => decadeLabel(d) === label);
 
+// ---- Game data: from the server, or from the offline pack when the server can't be reached.
+
+/** A data request waits this long before the pack takes over (only when a pack is on the device). */
+const PACK_TIMEOUT_MS = 7000;
+
+/** The server answered and refused (4xx), with its message for the player. */
+export class ServerRefused extends Error {}
+
+/** No connection, a timeout or a server that is down – not "the server said no" (4xx). */
+export function isUnreachable(error: unknown): boolean {
+  if (error instanceof ServerRefused) return false;
+  const message = error instanceof Error ? error.message : '';
+  return !message.startsWith('API ') || message.startsWith('API 5');
+}
+
+async function getData<T>(path: string): Promise<T> {
+  const controller = packReady() ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), PACK_TIMEOUT_MS) : null;
+  try {
+    const res = await fetch(`${apiBaseUrl()}${path}`, { signal: controller?.signal });
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return await res.json();
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+/** The server's answer; if it can't be reached and the pack has the same data, the pack's. */
+async function withPack<T>(path: string, fromPack: () => Promise<T | null> | T | null): Promise<T> {
+  try {
+    const data = await getData<T>(path);
+    setPackState({ offline: false });
+    return data;
+  } catch (error) {
+    if (!packReady() || !isUnreachable(error)) throw error;
+    const data = await fromPack();
+    if (data === null) throw error;
+    setPackState({ offline: true });
+    return data;
+  }
+}
+
+/** The pack's club seasons as the tournaments' data source (also used to play offline). */
+export const PACK_DATA = packTournamentData(async (league) => packSeasons(league));
+
 /** Clubs imported for a league in a decade, using the reel labels ("German", "70"). */
 export async function fetchClubs(leagueLabel: string, decadeLabelText: string): Promise<ClubsResponse> {
   const league = leagueFromLabel(leagueLabel);
   const decade = decadeFromLabel(decadeLabelText);
   if (!league || !decade) throw new Error(`Unknown league/decade: ${leagueLabel} ${decadeLabelText}`);
-
-  const res = await fetch(`${apiBaseUrl()}/api/clubs?league=${league}&decade=${decade}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return withPack(`/api/clubs?league=${league}&decade=${decade}`, () => {
+    const cell = packCell(league, decade);
+    return cell && { league, decade, clubs: cell.clubs };
+  });
 }
 
 /** A club's imported players across the spun decade (club by name; the API slugifies it). */
@@ -81,11 +132,11 @@ export async function fetchSquad(leagueLabel: string, decadeLabelText: string, c
   const league = leagueFromLabel(leagueLabel);
   const decade = decadeFromLabel(decadeLabelText);
   if (!league || !decade) throw new Error(`Unknown league/decade: ${leagueLabel} ${decadeLabelText}`);
-
-  const query = `league=${league}&decade=${decade}&club=${encodeURIComponent(club)}`;
-  const res = await fetch(`${apiBaseUrl()}/api/squad?${query}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return withPack(`/api/squad?league=${league}&decade=${decade}&club=${encodeURIComponent(club)}`, () => {
+    const clubSlug = slugify(club);
+    const players = packCell(league, decade)?.squads[clubSlug];
+    return players ? { league, decade, clubSlug, players } : null;
+  });
 }
 
 /** An API squad player as offered in the draft list. */
@@ -111,14 +162,26 @@ export function toDraftPlayer(p: SquadResponse['players'][number]): DraftPlayer 
   };
 }
 
+/** A random completed league season from the pack. */
+function randomPackSeason(): { league: League; season: number } | null {
+  const league = LEAGUES[Math.floor(Math.random() * LEAGUES.length)]!;
+  const seasons = Object.entries(packSeasons(league)?.seasons ?? {})
+    .filter(([season, clubs]) => Number(season) <= lastCompleteSeason() && clubs.some((c) => c.table))
+    .map(([season]) => Number(season));
+  return seasons.length ? { league, season: seasons[Math.floor(Math.random() * seasons.length)]! } : null;
+}
+
 /** Final table of a league season, or of a random completed one (`random`). */
 export async function fetchTable(
   query: { random: true } | { league: League; season: number },
 ): Promise<LeagueTableResponse> {
   const qs = 'random' in query ? 'random=1' : `league=${query.league}&season=${query.season}`;
-  const res = await fetch(`${apiBaseUrl()}/api/table?${qs}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return withPack(`/api/table?${qs}`, async () => {
+    const pick = 'random' in query ? randomPackSeason() : query;
+    if (!pick) return null;
+    const rows = await PACK_DATA.leagueTable(pick.league, pick.season);
+    return rows.length ? { league: pick.league, season: pick.season, rows } : null;
+  });
 }
 
 /** A real club season's likely XI with season ratings (Match mode opponent). */
@@ -128,23 +191,19 @@ export async function fetchOpponent(query: {
   club: string;
 }): Promise<OpponentResponse> {
   const qs = `league=${query.league}&season=${query.season}&club=${encodeURIComponent(query.club)}`;
-  const res = await fetch(`${apiBaseUrl()}/api/opponent?${qs}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return withPack(`/api/opponent?${qs}`, () => PACK_DATA.opponentXI(query.league, query.season, slugify(query.club)));
 }
 
 /** Every club's likely XI in a league season (League simulation). */
 export async function fetchSeasonXIs(query: { league: League; season: number }): Promise<SeasonXIsResponse> {
-  const res = await fetch(`${apiBaseUrl()}/api/season-xis?league=${query.league}&season=${query.season}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return withPack(`/api/season-xis?league=${query.league}&season=${query.season}`, () =>
+    PACK_DATA.seasonXIs(query.league, query.season),
+  );
 }
 
 /** Champions League field of a season: the 31 strongest clubs of the top five leagues. */
 export async function fetchCupField(season: number): Promise<CupFieldResponse> {
-  const res = await fetch(`${apiBaseUrl()}/api/cl-field?season=${season}`);
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return res.json();
+  return withPack(`/api/cl-field?season=${season}`, () => PACK_DATA.cupField(season));
 }
 
 // ---- Leaderboard
@@ -169,7 +228,9 @@ async function postJSONMessage<T>(path: string, body: unknown): Promise<T> {
   const data = (await res.json().catch(() => null)) as (T & { error?: string }) | null;
   if (!res.ok || !data) {
     const readable = [400, 401, 403, 429].includes(res.status) && data?.error;
-    throw new Error(readable ? data.error : 'No connection to the server');
+    if (readable) throw new ServerRefused(data.error);
+    if (res.status >= 400 && res.status < 500) throw new ServerRefused("The server couldn't do that");
+    throw new Error('No connection to the server');
   }
   return data;
 }
@@ -216,9 +277,11 @@ export const fetchSquadDetail = (id: string) => getJSON<SquadDetail>(`/api/squad
 // ---- Legends
 
 /** A legendary club season's likely XI. */
-export const fetchLegend = (id: string) => getJSON<LegendResponse>(`/api/legend?id=${encodeURIComponent(id)}`);
+export const fetchLegend = (id: string) =>
+  withPack<LegendResponse>(`/api/legend?id=${encodeURIComponent(id)}`, () => PACK_DATA.legendXI(id));
 /** Legends whose squad is in the database. */
-export const fetchLegendsAvailability = () => getJSON<LegendsAvailability>('/api/legends');
+export const fetchLegendsAvailability = () =>
+  withPack<LegendsAvailability>('/api/legends', async () => ({ available: await packLegends(PACK_DATA) }));
 
 // ---- Daily challenge
 

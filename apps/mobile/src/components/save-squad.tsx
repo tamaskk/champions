@@ -30,6 +30,8 @@ export function SaveSquadButton() {
               ? `@${user?.username ?? ''} · tap to open`
               : online.status === 'error'
                 ? 'Offline – tap to try again'
+                : online.offlineResult
+                  ? 'Played offline – the result is not ranked'
                 : user
                   ? `As @${user.username}`
                   : 'Under a generated username'

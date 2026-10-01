@@ -1,8 +1,26 @@
-import type { PlayChoice, PlayRequest, PlayResponse, SaveSquadRequest, SquadResult } from '@champion/shared';
+import {
+  sideFromLineup,
+  simulateTournament,
+  type PlayChoice,
+  type PlayRequest,
+  type PlayResponse,
+  type SaveSquadRequest,
+  type SquadResult,
+} from '@champion/shared';
 import { useSyncExternalStore } from 'react';
 
 import { track } from '@/game/analytics';
-import { listSquadRequest, playTournament, saveSquad, secondChanceRequest, squadShareUrl } from '@/api/client';
+import {
+  PACK_DATA,
+  isUnreachable,
+  listSquadRequest,
+  playTournament,
+  saveSquad,
+  secondChanceRequest,
+  squadShareUrl,
+} from '@/api/client';
+import type { DraftPlayer } from '@/mocks/players';
+import { packReady, setPackState } from '@/offline/pack';
 
 import { recordProgress, teamName } from './progress';
 import { ensureUser } from './user';
@@ -13,6 +31,10 @@ import { refreshWallet } from './wallet';
  * result that counts): the first time the squad plays, it is saved there "unlisted", the server
  * simulates and stores the result, and the app shows it. "Save to leaderboard" then only puts the
  * squad (with the results the server recorded) onto the public list.
+ *
+ * Offline (server unreachable, offline pack on the device): match, legend, league and cup are
+ * simulated on the phone with the same code and the pack's clubs. Those results are local only:
+ * not stored on the server, not ranked, no coins.
  */
 
 export type ResultReport = Omit<SquadResult, 'at'>;
@@ -24,9 +46,15 @@ export type OnlineState = {
   onlineId?: string;
   results: ResultReport[];
   squad: Omit<SaveSquadRequest, 'userId'> | null;
+  /** The last tournament was played on the phone (offline): its result is not ranked. */
+  offlineResult: boolean;
 };
 
-let state: OnlineState = { status: 'idle', results: [], squad: null };
+/** The drafted players themselves (ratings, positions, careers): what an offline simulation needs. */
+type LocalSquad = { formation: string; lineup: (DraftPlayer | null)[]; bench: (DraftPlayer | null)[] };
+let local: LocalSquad | null = null;
+
+let state: OnlineState = { status: 'idle', results: [], squad: null, offlineResult: false };
 const listeners = new Set<() => void>();
 const set = (patch: Partial<OnlineState>) => {
   state = { ...state, ...patch };
@@ -47,13 +75,15 @@ const sameSquad = (a: OnlineState['squad'], b: OnlineState['squad']) =>
   !!a && !!b && JSON.stringify([a.formation, a.players, a.bench]) === JSON.stringify([b.formation, b.players, b.bench]);
 
 /** The drafted squad (XI, bench, captain). A changed squad is a new one on the server. */
-export function setCurrentSquad(squad: Omit<SaveSquadRequest, 'userId'>) {
+export function setCurrentSquad(squad: Omit<SaveSquadRequest, 'userId'>, players: LocalSquad) {
+  local = players;
   if (sameSquad(state.squad, squad)) return;
-  set({ status: 'idle', onlineId: undefined, results: [], squad });
+  set({ status: 'idle', onlineId: undefined, results: [], squad, offlineResult: false });
 }
 
 export function clearCurrentSquad() {
-  set({ status: 'idle', onlineId: undefined, results: [], squad: null });
+  local = null;
+  set({ status: 'idle', onlineId: undefined, results: [], squad: null, offlineResult: false });
 }
 
 let uploading: Promise<string> | null = null;
@@ -75,11 +105,26 @@ export async function ensureOnlineSquad(): Promise<string> {
 
 /** Plays a tournament on the server with the current squad; the result is already stored there. */
 export async function playOnline(choice: PlayChoice): Promise<PlayResponse> {
-  const id = await ensureOnlineSquad();
-  const user = await ensureUser();
-  const result = await playTournament(id, { ...choice, userId: user.userId, teamName: teamName() } as PlayRequest);
-  track('tournament_done', { mode: choice.mode });
-  return result;
+  try {
+    const id = await ensureOnlineSquad();
+    const user = await ensureUser();
+    const result = await playTournament(id, { ...choice, userId: user.userId, teamName: teamName() } as PlayRequest);
+    set({ offlineResult: false });
+    setPackState({ offline: false });
+    track('tournament_done', { mode: choice.mode });
+    return result;
+  } catch (error) {
+    // Server unreachable: the modes that only need real clubs are played here, from the pack.
+    const solo = choice.mode === 'match' || choice.mode === 'legend' || choice.mode === 'league' || choice.mode === 'cup';
+    if (!solo || !local || !packReady() || !isUnreachable(error)) throw error;
+    const matchPlayer = (p: DraftPlayer | null) => p && { ...p, rating: p.rating ?? null };
+    const you = sideFromLineup(teamName(), local.formation, local.lineup.map(matchPlayer), local.bench.map(matchPlayer));
+    const result = await simulateTournament(choice, you, PACK_DATA);
+    set({ offlineResult: true });
+    setPackState({ offline: true });
+    track('tournament_done', { mode: choice.mode });
+    return result;
+  }
 }
 
 /** Uses a Second chance for this squad on the server (it takes the item from the wallet). */

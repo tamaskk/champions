@@ -1,6 +1,16 @@
 import type { League } from './leagues';
-import { expectedGoals, lineStrengths, pickScorer, simulateMatch, type MatchPlayer, type MatchSide } from './match';
-import { simulateSeason, type Scorer, type SeasonResult, type SeasonTeam } from './season';
+import {
+  expectedGoals,
+  lineStrengths,
+  matchEvents,
+  pickScorer,
+  simulateMatch,
+  type MatchEvent,
+  type MatchPlayer,
+  type MatchResult,
+  type MatchSide,
+} from './match';
+import { simulateSeason, standingsAfter, type Scorer, type SeasonResult, type SeasonTeam } from './season';
 
 /**
  * Champions League: 32 teams, 8 groups of 4 (home and away), then two-legged knockout rounds
@@ -24,6 +34,8 @@ export type CupMatch = {
   /** Goals scored in extra time (included in homeGoals / awayGoals). */
   extraTime?: { home: number; away: number };
   penalties?: { home: number; away: number };
+  /** The 90 minutes in full (goals, cards by minute) – only for the matches of `detailFor`. */
+  detail?: { result: MatchResult; events: MatchEvent[] };
 };
 
 export type CupTie = {
@@ -148,7 +160,7 @@ function penalties(random: () => number): { home: number; away: number } {
   return { home, away };
 }
 
-type Sink = { matches: CupMatch[]; goals: { teamId: string; scorer: string }[] };
+type Sink = { matches: CupMatch[]; goals: { teamId: string; scorer: string }[]; detailFor?: string };
 
 /** Plays one match; adds extra time (and penalties) when `decide` says the tie is still level. */
 function play(
@@ -168,6 +180,9 @@ function play(
     awayGoals: r.awayGoals,
     neutral: opts.neutral,
   };
+  if (sink.detailFor !== undefined && (home.id === sink.detailFor || away.id === sink.detailFor)) {
+    match.detail = { result: r, events: matchEvents(home, away, r, random) };
+  }
   for (const g of r.goals) sink.goals.push({ teamId: g.side === 'home' ? home.id : away.id, scorer: g.scorer });
   if (opts.decide?.(match.homeGoals, match.awayGoals)) {
     // Extra time: 30 minutes, a third of the 90-minute expected goals.
@@ -201,10 +216,15 @@ function twoLegs(stage: string, a: CupTeam, b: CupTeam, random: () => number, si
   return { a: a.id, b: b.id, legs: [first, second], aggA, aggB, winner };
 }
 
-export function simulateCup(teams: readonly CupTeam[], random: () => number = Math.random): CupResult {
+export function simulateCup(
+  teams: readonly CupTeam[],
+  random: () => number = Math.random,
+  /** Keep the whole match (events included) for this team's matches, to watch them one by one. */
+  options: { detailFor?: string } = {},
+): CupResult {
   if (teams.length !== 32) throw new Error(`A Champions League needs 32 teams, got ${teams.length}`);
   const byId = new Map(teams.map((t) => [t.id, t]));
-  const sink: Sink = { matches: [], goals: [] };
+  const sink: Sink = { matches: [], goals: [], detailFor: options.detailFor };
 
   // Seeding by strength into 4 pots of 8, then the group draw.
   const seeded = [...teams].sort((x, y) => teamStrength(y) - teamStrength(x));
@@ -212,7 +232,7 @@ export function simulateCup(teams: readonly CupTeam[], random: () => number = Ma
   const drawn = drawGroups(pots, random);
 
   const groups: CupGroup[] = drawn.map((g, i) => {
-    const result = simulateSeason(g, 3, random);
+    const result = simulateSeason(g, 3, random, { detailFor: options.detailFor });
     for (const f of result.fixtures) {
       sink.matches.push({
         stage: `Group ${GROUP_NAMES[i]} · MD${f.round}`,
@@ -220,6 +240,7 @@ export function simulateCup(teams: readonly CupTeam[], random: () => number = Ma
         away: f.away,
         homeGoals: f.homeGoals,
         awayGoals: f.awayGoals,
+        ...(f.detail ? { detail: f.detail } : {}),
       });
     }
     return { name: GROUP_NAMES[i]!, teams: g.map((t) => t.id), result };
@@ -273,6 +294,75 @@ export function simulateCup(teams: readonly CupTeam[], random: () => number = Ma
     championId: finalWinner,
     matches: sink.matches,
     scorers: [...tally.values()].sort((x, y) => y.goals - x.goals || x.name.localeCompare(y.name)),
+  };
+}
+
+// ---- Playing the cup match by match: what is known after some of a team's matches.
+
+const GROUP_MATCHDAYS = 6;
+const involves = (m: CupMatch, teamId: string) => m.home === teamId || m.away === teamId;
+
+export type CupProgress = {
+  /** The team's matches, in order (6 group matches, then knockout legs until it goes out). */
+  matches: CupMatch[];
+  shown: number;
+  done: boolean;
+  /** The next match to play, null when done. */
+  next: CupMatch | null;
+  /** The cup as far as it has been played: tables after the shown matchday, the drawn round. */
+  view: CupResult;
+};
+
+/**
+ * The cup after `shown` of `teamId`'s matches. Everything was simulated at kick-off; this only
+ * decides how much of it is visible: every group after the same matchday, a knockout round once
+ * the group stage is over (its ties with the legs played so far), nothing of the rounds beyond.
+ * With all matches shown the view is the whole result.
+ */
+export function cupProgress(result: CupResult, teamId: string, shown: number): CupProgress {
+  const matches = result.matches.filter((m) => involves(m, teamId));
+  const n = Math.max(0, Math.min(shown, matches.length));
+  if (n >= matches.length) return { matches, shown: matches.length, done: true, next: null, view: result };
+
+  const played = matches.slice(0, n);
+  const matchday = played.filter((m) => m.stage.startsWith('Group')).length;
+  const groups = result.groups.map((g) => ({
+    ...g,
+    result: {
+      ...g.result,
+      table: standingsAfter(g.result.table, g.result.fixtures, matchday, g.result.pointsForWin),
+      fixtures: g.result.fixtures.filter((f) => f.round <= matchday),
+      scorers: [],
+    },
+  }));
+
+  const rounds: CupRound[] = [];
+  if (matchday >= GROUP_MATCHDAYS) {
+    for (const round of result.rounds) {
+      const legs = played.filter((m) => m.stage.startsWith(round.name)).length;
+      const mine = round.ties.find((t) => t.a === teamId || t.b === teamId);
+      if (!mine) break;
+      if (legs >= mine.legs.length) {
+        rounds.push(round);
+        continue;
+      }
+      // The round being played: every tie with the legs played so far, no winner yet.
+      rounds.push({
+        name: round.name,
+        ties: round.ties.map((t) => {
+          const first = legs > 0 ? t.legs[0] : undefined;
+          return { ...t, legs: t.legs.slice(0, legs), aggA: first?.homeGoals ?? 0, aggB: first?.awayGoals ?? 0, winner: '' };
+        }),
+      });
+      break;
+    }
+  }
+  return {
+    matches,
+    shown: n,
+    done: false,
+    next: matches[n]!,
+    view: { ...result, groups, rounds, championId: '', matches: played, scorers: [] },
   };
 }
 

@@ -27,7 +27,6 @@ import type { DraftPick, DraftRules } from '@/components/draft-spin';
 import type { CardLink, CardTarget } from '@/components/player-card';
 import type { SlotReelHandle } from '@/components/slot-reel';
 import type { EndActions } from '@/components/tournament-shell';
-import { showInterstitialAfterGame } from '@/game/ads';
 import { track } from '@/game/analytics';
 import { autofillBench, autofillLineup } from '@/game/autofill';
 import { usePendingChallenge } from '@/game/challenge';
@@ -433,12 +432,9 @@ export function useDraft() {
   };
 
   // Leaving a finished tournament: with a Second chance in the wallet, offer one more first.
-  // A tournament was played to the end: its result is shown, then an interstitial (not in the
-  // Daily, which has its own result screen; not for Club members).
-  const tournamentOver = () => {
-    setFinished(true);
-    showInterstitialAfterGame();
-  };
+  // The squad has used its tournament (the result is decided, even if it is still being watched
+  // match by match). The interstitial comes with the end bar, when the watching is over.
+  const tournamentOver = () => setFinished(true);
 
   const endTournament = () => {
     if (!daily && secondChances > 0) setOfferSecondChance(true);

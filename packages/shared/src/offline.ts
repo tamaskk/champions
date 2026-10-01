@@ -106,7 +106,7 @@ export async function simulateTournament(
           .filter((c) => c.xi.length > 0)
           .map((c) => ({ id: `${c.league}|${c.clubSlug}`, name: c.club, xi: c.xi, factor: 1, league: c.league, elo: c.elo })),
       ].slice(0, 32);
-      const result = simulateCup(teams, random);
+      const result = simulateCup(teams, random, { detailFor: YOUR_ID });
       const facedIds = new Set(
         result.matches.flatMap((m) => (m.home === YOUR_ID ? [m.away] : m.away === YOUR_ID ? [m.home] : [])),
       );

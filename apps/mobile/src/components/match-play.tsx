@@ -40,6 +40,13 @@ const FAST_TICK_MS = 90;
 /** How a match already played is shown: result at once, live, or live at fast speed. */
 export type WatchSpeed = 'quick' | 'live' | 'fast';
 
+/** The three ways to play any match: the result at once, the 90 minutes fast, or live. */
+export const WATCH_OPTIONS = [
+  { speed: 'quick', icon: 'bolt', label: 'Result', sub: 'At once' },
+  { speed: 'fast', icon: 'fast_forward', label: 'Fast', sub: '≈ 10 s' },
+  { speed: 'live', icon: 'timer', label: 'Live', sub: '≈ 45 s' },
+] as const;
+
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 const initialOf = (name: string) => {
   const parts = name.split(' ');
@@ -162,12 +169,13 @@ export function MatchPlay({
     onResult?.({ outcome: ours > theirs ? 'win' : ours === theirs ? 'draw' : 'loss', yours: ours, theirs, played });
   }, [played, clock, onResult]);
 
-  const play = async (live: boolean) => {
+  const play = async (speed: WatchSpeed) => {
     setPlaying('loading');
     try {
       const p = await simulate(yourSide(formation, lineup));
       setPlayed(p);
-      setClock(live ? { minute: 0, phase: 'first' } : null);
+      setFast(speed === 'fast');
+      setClock(speed === 'quick' ? null : { minute: 0, phase: 'first' });
       onFinished();
       setPlaying('idle');
     } catch (e) {
@@ -245,24 +253,18 @@ export function MatchPlay({
         preMatch
       ) : (
         <View style={styles.playRow}>
-          <Btn
-            kind="blue"
-            icon="bolt"
-            label={playing === 'loading' ? 'Loading…' : 'Quick sim'}
-            sub="Result at once"
-            disabled={playing === 'loading'}
-            onPress={() => play(false)}
-            style={styles.flex}
-          />
-          <Btn
-            kind="green"
-            icon="timer"
-            label="Live match"
-            sub="0' → 90', half-time"
-            disabled={playing === 'loading'}
-            onPress={() => play(true)}
-            style={styles.flex}
-          />
+          {WATCH_OPTIONS.map((o) => (
+            <Btn
+              key={o.speed}
+              kind={o.speed === 'live' ? 'green' : o.speed === 'fast' ? 'blue' : 'mid'}
+              icon={o.icon}
+              label={playing === 'loading' ? '…' : o.label}
+              sub={o.sub}
+              disabled={playing === 'loading'}
+              onPress={() => play(o.speed)}
+              style={styles.flex}
+            />
+          ))}
         </View>
       )}
       {playing === 'loading' && <ActivityIndicator color={C.green} />}

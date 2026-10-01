@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,6 +7,7 @@ import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
 import { C, HEADER_HEIGHT, R } from '@/design/tokens';
 import { Btn, SHADOW_SM, ScreenHeader } from '@/design/ui';
+import { showInterstitialAfterGame } from '@/game/ads';
 
 export type ShellMode = 'match' | 'league' | 'cup';
 
@@ -86,6 +87,11 @@ export const EndActionsContext = createContext<EndActions | null>(null);
  */
 export function EndBar({ onNewGame, onExit }: { onNewGame: () => void; onExit: () => void }) {
   const more = useContext(EndActionsContext);
+  // The end bar appears when a tournament has been played (and watched) to the end: the moment for
+  // the interstitial – never earlier, so no ad during a live match or between matchdays.
+  useEffect(() => {
+    showInterstitialAfterGame();
+  }, []);
   return (
     <View style={styles.end}>
       <SaveSquadButton />

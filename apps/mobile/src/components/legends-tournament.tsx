@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { fetchLegend, fetchLegendsAvailability } from '@/api/client';
-import { MatchPlay } from '@/components/match-play';
+import { MatchPlay, WATCH_OPTIONS, type WatchSpeed } from '@/components/match-play';
 import { EndBar, TournamentShell } from '@/components/tournament-shell';
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
@@ -91,7 +91,19 @@ export function LegendsTournament({
 
   // The two-legged tie is played on the server with the saved squad; the result is stored there.
   const [tieState, setTieState] = useState<'idle' | 'loading' | string>('idle');
-  const playTie = async () => {
+  // The tie is decided at kick-off; its legs are then watched one by one (result, fast or live).
+  const [legsShown, setLegsShown] = useState(0);
+  const [watchLeg, setWatchLeg] = useState<{ index: number; speed: WatchSpeed } | null>(null);
+  const [tieReport, setTieReport] = useState<ResultReport | null>(null);
+  // Both legs seen: the verdict (and the legend, if beaten) is yours.
+  const showLegs = (n: number) => {
+    setLegsShown(n);
+    if (n >= 2 && picked && tie && tieReport) {
+      finish(picked, tie.won, tieReport);
+      setTieReport(null);
+    }
+  };
+  const playTie = async (speed: WatchSpeed | 'all') => {
     if (!picked || !xi || tieState === 'loading') return;
     setTieState('loading');
     try {
@@ -101,7 +113,14 @@ export function LegendsTournament({
       setLocked(true);
       setTieState('idle');
       onFinished();
-      finish(picked, r.tie.won, r.report);
+      if (speed === 'all') {
+        setLegsShown(2);
+        finish(picked, r.tie.won, r.report);
+      } else {
+        setLegsShown(0);
+        setTieReport(r.report);
+        setWatchLeg({ index: 0, speed });
+      }
     } catch (e) {
       setTieState(e instanceof Error && e.message ? e.message : 'Couldn’t play the tie – check your connection.');
     }
@@ -275,6 +294,56 @@ export function LegendsTournament({
                 />
               )}
             </MatchPlay>
+          ) : tie && watchLeg ? (
+            <MatchPlay
+              key={`${picked.id}-leg${watchLeg.index}-${watchLeg.speed}`}
+              formation={formation}
+              lineup={[]}
+              overall={overall}
+              chemistry={chemistry}
+              opponentName={picked.nickname}
+              opponentRating={rating}
+              opponentChip={watchLeg.index === 0 ? '1ST LEG' : '2ND LEG'}
+              meta={label(picked)}
+              metaPlayed={`${watchLeg.index === 0 ? '1ST LEG' : '2ND LEG'} · ${label(picked)}`}
+              simulate={async () => ({ ...tie.legs[watchLeg.index]!, opponentName: picked.nickname })}
+              preplayed={{ played: { ...tie.legs[watchLeg.index]!, opponentName: picked.nickname }, speed: watchLeg.speed }}
+              onResult={() => showLegs(watchLeg.index + 1)}
+              onFinished={() => undefined}
+              onNewGame={() => undefined}
+              onExit={() => undefined}
+              hideEndBar>
+              <Btn
+                kind="green"
+                icon="skip_next"
+                label={watchLeg.index === 0 ? 'Continue to the 2nd leg' : 'See the tie'}
+                height={48}
+                onPress={() => setWatchLeg(null)}
+              />
+            </MatchPlay>
+          ) : tie && legsShown < 2 ? (
+            <View style={styles.card}>
+              <Txt v="h20">{legsShown === 0 ? '1st leg · home' : '2nd leg · away'}</Txt>
+              {legsShown === 1 && (
+                <Txt v="body" color={C.textMuted}>
+                  1st leg: {tie.legs[0].yours}–{tie.legs[0].theirs}. Level on aggregate after the return leg: penalties.
+                </Txt>
+              )}
+              <View style={styles.watchRow}>
+                {WATCH_OPTIONS.map((o) => (
+                  <Btn
+                    key={o.speed}
+                    kind={o.speed === 'live' ? 'green' : o.speed === 'fast' ? 'blue' : 'mid'}
+                    icon={o.icon}
+                    label={o.label}
+                    sub={o.sub}
+                    onPress={() => setWatchLeg({ index: legsShown, speed: o.speed })}
+                    style={styles.flex}
+                  />
+                ))}
+              </View>
+              <Btn kind="dark" icon="sports_score" label="Straight to the result" height={44} onPress={() => showLegs(2)} />
+            </View>
           ) : tie ? (
             <>
               <TieCard tie={tie} legend={picked} />
@@ -300,13 +369,30 @@ export function LegendsTournament({
               <Txt v="body" color={C.textMuted} style={styles.center}>
                 First leg at home, return leg away. Level on aggregate: penalties.
               </Txt>
+              <Txt v="capUpper" color={C.textMuted} style={styles.center}>
+                {!xi ? 'LOADING THE LEGEND…' : tieState === 'loading' ? 'PLAYING…' : '1ST LEG · HOW TO PLAY IT'}
+              </Txt>
+              <View style={styles.watchRow}>
+                {WATCH_OPTIONS.map((o) => (
+                  <Btn
+                    key={o.speed}
+                    kind={o.speed === 'live' ? 'green' : o.speed === 'fast' ? 'blue' : 'mid'}
+                    icon={o.icon}
+                    label={o.label}
+                    sub={o.sub}
+                    disabled={!xi || tieState === 'loading'}
+                    onPress={() => playTie(o.speed)}
+                    style={styles.flex}
+                  />
+                ))}
+              </View>
               <Btn
-                kind="blue"
+                kind="dark"
                 icon="swords"
-                label={!xi ? 'Loading the legend…' : tieState === 'loading' ? 'Playing…' : 'Play the tie'}
-                sub="Both legs at once"
+                label="Both legs at once"
+                height={44}
                 disabled={!xi || tieState === 'loading'}
-                onPress={playTie}
+                onPress={() => playTie('all')}
               />
               {tieState !== 'idle' && tieState !== 'loading' && (
                 <Txt v="bodySemi" color={C.red} style={styles.center}>
@@ -460,6 +546,10 @@ const styles = StyleSheet.create({
   },
   segActive: {
     backgroundColor: C.greenStrong,
+  },
+  watchRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
   center: {
     textAlign: 'center',

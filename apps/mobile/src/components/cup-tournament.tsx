@@ -1,4 +1,5 @@
 import {
+  cupProgress,
   lastCompleteSeason,
   seasonLabel,
   sideFromLineup,
@@ -15,6 +16,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { fetchCupField } from '@/api/client';
+import { MatchPlay, WATCH_OPTIONS, type Played, type WatchSpeed } from '@/components/match-play';
 import { Select } from '@/components/select';
 import { SlotReel, type SlotReelHandle } from '@/components/slot-reel';
 import { ResultInsight } from '@/components/result-insight';
@@ -129,6 +131,10 @@ export function CupTournament({
   }, [field, formation, lineup]);
   const byId = useMemo(() => new Map((teams ?? []).map((t) => [t.id, t])), [teams]);
   const name = (id: string) => (id === YOUR_ID ? teamName() : (byId.get(id)?.name ?? '?'));
+  const ratingOf = (id: string) => {
+    const rated = (byId.get(id)?.xi ?? []).flatMap((p) => (p.rating === null ? [] : [p.rating]));
+    return rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null;
+  };
 
   // Result, tab and error belong to the season's field they were made for; another field starts
   // clean – derived, so nothing is reset in an effect.
@@ -136,6 +142,12 @@ export function CupTournament({
   const [played, setPlayed] = useState<{ key: string; result: CupResult } | null>(null);
   const result = played?.key === fieldKey ? played.result : null;
   const [view, setView] = useState<View3>('path');
+  // Match by match: how many of your matches have been shown, and the one being watched.
+  const [shownFor, setShownFor] = useState<{ key: string; n: number } | null>(null);
+  const shown = shownFor?.key === fieldKey ? shownFor.n : 0;
+  const [watching, setWatching] = useState<{ index: number; speed: WatchSpeed } | null>(null);
+  const progress = useMemo(() => (result ? cupProgress(result, YOUR_ID, shown) : null), [result, shown]);
+  const reveal = (n: number) => setShownFor({ key: fieldKey, n });
   // null = fine; 'loading'; or the error to show.
   const [simErrorFor, setSimErrorFor] = useState<{ key: string; message: string } | null>(null);
   const simError = simErrorFor?.key === fieldKey ? simErrorFor.message : null;
@@ -166,7 +178,9 @@ export function CupTournament({
       if (r.mode !== 'cup') throw new Error('Unexpected answer from the server');
       setServerInsight(r.insight);
       setPlayed({ key: fieldKey, result: r.result });
-      setView('path');
+      setShownFor({ key: fieldKey, n: 0 });
+      setWatching(null);
+      setView('groups');
       onResult?.(r.report);
       onFinished();
       setSimError(null);
@@ -342,7 +356,48 @@ export function CupTournament({
         </Animated.View>
       )}
 
-      {result && field && !open && (
+      {/* Match by match: your next match (result, fast or live), then what is known so far. */}
+      {result && field && progress && !progress.done && !open && (
+        <>
+          {watching && progress.matches[watching.index] ? (
+            <CupMatchPlay
+              key={`${watching.index}-${watching.speed}`}
+              match={progress.matches[watching.index]!}
+              speed={watching.speed}
+              result={result}
+              season={field.season}
+              formation={formation}
+              overall={overall}
+              chemistry={chemistry}
+              name={name}
+              rating={ratingOf}
+              onResult={() => reveal(watching.index + 1)}
+              onContinue={() => setWatching(null)}
+            />
+          ) : (
+            progress.next && (
+              <CupNext
+                next={progress.next}
+                last={progress.shown > 0 ? progress.matches[progress.shown - 1]! : null}
+                season={field.season}
+                name={name}
+                onWatch={(speed) => setWatching({ index: progress.shown, speed })}
+                onSkip={() => reveal(progress.matches.length)}
+              />
+            )
+          )}
+          {!watching && (
+            <>
+              <CupTabs view={view} onView={setView} />
+              {view === 'path' && <YourPath result={progress.view} name={name} />}
+              {view === 'groups' && <Groups result={progress.view} name={name} />}
+              {view === 'knockouts' && <Knockouts result={progress.view} name={name} />}
+            </>
+          )}
+        </>
+      )}
+
+      {result && field && progress?.done && !open && (
         <>
           <Verdict result={result} season={field.season} name={name} />
           {why && (
@@ -351,26 +406,7 @@ export function CupTournament({
               stats={{ goalsFor: why.goalsFor, goalsAgainst: why.goalsAgainst, matches: why.matches }}
             />
           )}
-          <View style={styles.tabs}>
-            {(
-              [
-                { id: 'path', label: 'Your path' },
-                { id: 'groups', label: 'Groups' },
-                { id: 'knockouts', label: 'Knockouts' },
-              ] as const
-            ).map((t) => (
-              <Pressable
-                key={t.id}
-                onPress={() => setView(t.id)}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: view === t.id }}
-                style={[styles.tab, view === t.id && styles.tabActive]}>
-                <Txt v="bodySemi" color={view === t.id ? C.onGreenStrong : C.textMuted}>
-                  {t.label}
-                </Txt>
-              </Pressable>
-            ))}
-          </View>
+          <CupTabs view={view} onView={setView} />
           {view === 'path' && <YourPath result={result} name={name} />}
           {view === 'groups' && <Groups result={result} name={name} />}
           {view === 'knockouts' && <Knockouts result={result} name={name} />}
@@ -382,6 +418,201 @@ export function CupTournament({
 }
 
 type Named = { name: (id: string) => string };
+
+function CupTabs({ view, onView }: { view: View3; onView: (v: View3) => void }) {
+  return (
+    <View style={styles.tabs}>
+      {(
+        [
+          { id: 'path', label: 'Your path' },
+          { id: 'groups', label: 'Groups' },
+          { id: 'knockouts', label: 'Knockouts' },
+        ] as const
+      ).map((t) => (
+        <Pressable
+          key={t.id}
+          onPress={() => onView(t.id)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: view === t.id }}
+          style={[styles.tab, view === t.id && styles.tabActive]}>
+          <Txt v="bodySemi" color={view === t.id ? C.onGreenStrong : C.textMuted}>
+            {t.label}
+          </Txt>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+const venueOf = (m: CupMatch) => (m.neutral ? 'neutral ground' : m.home === YOUR_ID ? 'home' : 'away');
+
+/** A cup match's final line from your side: "2–1", "2–2 aet", "1–1 · pens 4–2". */
+function scoreLine(m: CupMatch) {
+  const r = fromYou(m);
+  return `${r.ours}–${r.theirs}${r.pens ? ` · pens ${r.pens[0]}–${r.pens[1]}` : m.extraTime ? ' aet' : ''}`;
+}
+
+/** Your next cup match: how to play it, or straight to the end of the run. */
+function CupNext({
+  next,
+  last,
+  season,
+  name,
+  onWatch,
+  onSkip,
+}: {
+  next: CupMatch;
+  last: CupMatch | null;
+  season: number;
+  onWatch: (speed: WatchSpeed) => void;
+  onSkip: () => void;
+} & Named) {
+  const r = fromYou(next);
+  // The second leg of a tie: the first leg is the previous match, against the same club.
+  const firstLeg = next.stage.endsWith('2nd leg') ? last : null;
+  return (
+    <Animated.View entering={FadeIn.duration(250)} style={styles.card}>
+      <View style={styles.between}>
+        <View style={[styles.row4, styles.flexShrink]}>
+          <Icon name="emoji_events" size={17} color={C.gold} />
+          <Txt v="h20" style={styles.flexShrink}>
+            {next.stage}
+          </Txt>
+        </View>
+        <Txt v="cap" color={C.textDim}>
+          CL {seasonLabel(season)}
+        </Txt>
+      </View>
+      <Txt v="bodySemi">
+        {next.neutral || r.home ? 'vs' : '@'} {name(r.opponent)}
+        <Txt v="body" color={C.textMuted}>
+          {' '}
+          · {venueOf(next)}
+          {firstLeg ? ` · 1st leg ${scoreLine(firstLeg)}` : ''}
+        </Txt>
+      </Txt>
+      {last && !firstLeg && (
+        <Txt v="capBody" color={C.textDim}>
+          Last: {last.stage} · {scoreLine(last)} {last.neutral || last.home === YOUR_ID ? 'vs' : '@'}{' '}
+          {name(fromYou(last).opponent)}
+        </Txt>
+      )}
+      <View style={styles.row8}>
+        {WATCH_OPTIONS.map((o) => (
+          <Btn
+            key={o.speed}
+            kind={o.speed === 'live' ? 'green' : o.speed === 'fast' ? 'blue' : 'mid'}
+            icon={o.icon}
+            label={o.label}
+            sub={o.sub}
+            onPress={() => onWatch(o.speed)}
+            style={styles.flex}
+          />
+        ))}
+      </View>
+      <Btn
+        kind="dark"
+        icon="sports_score"
+        label="Simulate to the end"
+        sub="Straight to the end of your run"
+        height={48}
+        onPress={onSkip}
+      />
+      <Txt v="capBody" color={C.textDim} style={styles.center}>
+        The whole cup was drawn and played at kick-off – you watch your matches one by one.
+      </Txt>
+    </Animated.View>
+  );
+}
+
+/** One of your cup matches, watched (result, fast or live); extra time and penalties after it. */
+function CupMatchPlay({
+  match,
+  speed,
+  result,
+  season,
+  formation,
+  overall,
+  chemistry,
+  name,
+  rating,
+  onResult,
+  onContinue,
+}: {
+  match: CupMatch;
+  speed: WatchSpeed;
+  result: CupResult;
+  season: number;
+  formation: string;
+  overall: number;
+  chemistry: number;
+  rating: (id: string) => number | null;
+  onResult: () => void;
+  onContinue: () => void;
+} & Named) {
+  const r = fromYou(match);
+  const played: Played = {
+    youAtHome: r.home,
+    neutral: match.neutral,
+    opponentName: name(r.opponent),
+    result: match.detail?.result ?? {
+      homeGoals: match.homeGoals,
+      awayGoals: match.awayGoals,
+      goals: [],
+      expected: { home: 0, away: 0 },
+      chances: { win: 0, draw: 0, loss: 0 },
+    },
+    events: match.detail?.events ?? [],
+  };
+  // A tie decided by this match (second leg or final): aggregate and who goes through.
+  const tie = match.stage.endsWith('1st leg')
+    ? null
+    : result.rounds.flatMap((x) => x.ties).find((t) => t.legs.some((l) => l.stage === match.stage && yoursIn(l)));
+  const through = tie ? tie.winner === YOUR_ID : null;
+  return (
+    <MatchPlay
+      formation={formation}
+      lineup={[]}
+      overall={overall}
+      chemistry={chemistry}
+      opponentName={played.opponentName}
+      opponentRating={rating(r.opponent)}
+      opponentChip={match.stage.toUpperCase()}
+      meta={`CL ${seasonLabel(season)} · ${match.stage.toUpperCase()}`}
+      metaPlayed={match.stage.toUpperCase()}
+      simulate={async () => played}
+      preplayed={{ played, speed }}
+      onResult={onResult}
+      onFinished={() => undefined}
+      onNewGame={() => undefined}
+      onExit={() => undefined}
+      hideEndBar>
+      {(match.extraTime || match.penalties || tie) && (
+        <View style={styles.card}>
+          {match.extraTime && (
+            <Txt v="bodySemi" style={styles.center}>
+              After extra time: {r.ours}–{r.theirs}
+            </Txt>
+          )}
+          {r.pens && (
+            <Txt v="bodySemi" color={C.gold} style={styles.center}>
+              Penalties: {r.pens[0]}–{r.pens[1]}
+            </Txt>
+          )}
+          {tie && (
+            <Txt v="h14" color={through ? C.green : C.red} style={styles.center}>
+              {tie.legs.length > 1
+                ? `Aggregate ${tie.a === YOUR_ID ? tie.aggA : tie.aggB}–${tie.a === YOUR_ID ? tie.aggB : tie.aggA} · `
+                : ''}
+              {match.stage === 'Final' ? (through ? 'Champions of Europe!' : 'Runners-up') : through ? 'You go through' : 'You are out'}
+            </Txt>
+          )}
+        </View>
+      )}
+      <Btn kind="green" icon="skip_next" label="Continue" height={48} onPress={onContinue} />
+    </MatchPlay>
+  );
+}
 
 const yoursIn = (m: CupMatch) => m.home === YOUR_ID || m.away === YOUR_ID;
 
@@ -637,7 +868,7 @@ function Knockouts({ result, name }: { result: CupResult } & Named) {
                       {name(t.a)}
                     </Txt>
                     <Txt v="num13" color={final ? C.gold : C.text} style={styles.agg}>
-                      {t.aggA}–{t.aggB}
+                      {t.legs.length === 0 ? 'vs' : `${t.aggA}–${t.aggB}`}
                     </Txt>
                     <Txt
                       v={t.winner === t.b ? 'bodyBold' : 'body'}
@@ -648,7 +879,7 @@ function Knockouts({ result, name }: { result: CupResult } & Named) {
                     </Txt>
                   </View>
                   <Txt v="capBody" color={C.textDim} style={styles.center}>
-                    {final ? `Neutral ground · ${legs}` : legs}
+                    {t.legs.length === 0 ? 'To be played' : final ? `Neutral ground · ${legs}` : legs}
                   </Txt>
                 </View>
               );

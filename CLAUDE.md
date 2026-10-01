@@ -27,6 +27,7 @@ pnpm install                     # root only; .npmrc uses node-linker=hoisted (r
 pnpm dev:web                     # Next dev server on fixed port 3100 (mobile expects it)
 pnpm dev:mobile                  # Expo dev server
 pnpm typecheck && pnpm lint      # run before declaring done
+pnpm test                        # shared (match, season, cup, daily, store rules) + pipeline tests
 pnpm --filter @champion/web add <pkg>
 cd apps/mobile && npx expo install <pkg>   # mobile deps ALWAYS via expo install
 ```

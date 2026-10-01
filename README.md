@@ -135,8 +135,7 @@ the rest of your squad.
 │       ├── src/commands/       # tm:clubs, tm:squads, tm:positions, elo, rate, coverage, …
 │       ├── src/rating/         # player rating model
 │       └── data/               # club id mappings (small, committed); raw caches are ignored
-├── docs/                       # research notes, store listing, skills
-├── features.md                 # what's done and the feature ideas (Hungarian)
+├── docs/                       # research, planning (features, audits, gap lists), store listing, ads
 ├── monetization.md             # XP, coins, store, pricing and legal rules (Hungarian)
 ├── CLAUDE.md                   # conventions for AI-assisted development
 └── turbo.json, pnpm-workspace.yaml, package.json
@@ -359,7 +358,11 @@ cd apps/mobile && npx expo install <pkg>   # mobile dependencies always via expo
 
 | File | Contents |
 |---|---|
-| `features.md` | Features done and ideas, prioritised |
+| `docs/features.md` | Features done and ideas, prioritised |
+| `docs/audit-2026-09-30.md` | Pre-launch audit: what is fixed and what is still open |
+| `docs/ui-gaps.md`, `docs/engagement-gaps.md`, `docs/engagement-research.md` | Earlier gap lists and the research behind them |
+| `docs/design-brief.md` | Every screen and interaction, for design work |
+| `docs/ads.md` | Ads: formats, AdMob setup, server-side verification |
 | `monetization.md` | XP, coins, store, pricing, legal constraints and implementation status |
 | `docs/research.md` | Data sources, licensing notes, architecture research |
 | `docs/store-listing.md` | App store listing text |

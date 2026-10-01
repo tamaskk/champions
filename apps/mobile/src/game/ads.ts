@@ -1,9 +1,9 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { useSyncExternalStore } from 'react';
 import { Platform } from 'react-native';
 
 import { adTicket } from '@/api/client';
 
+import { loadSdk, type Sdk } from './ads-sdk';
 import { claim, isClubMember, refreshWallet } from './wallet';
 
 /**
@@ -17,7 +17,7 @@ import { claim, isClubMember, refreshWallet } from './wallet';
  * your own live ads). Test ads send no callback to our server, so there the app claims the
  * reward itself, which the server pays only in development or with ADS_SIMULATED=1.
  *
- * No native module (Expo Go, web): `available` is false and the shop falls back to its simulated ad.
+ * No native module (Expo Go, web – see `ads-sdk`): `available` is false and the shop falls back to its simulated ad.
  * Consent: Google's UMP form (EEA/UK/CH) runs before the SDK starts; ads load only if allowed.
  */
 
@@ -35,18 +35,6 @@ const INTERSTITIAL_UNITS: { ios: string; android: string } = {
 const INTERSTITIAL_GAP_MS = 30_000;
 /** Shown a moment after the result, so the player sees it first. */
 const INTERSTITIAL_DELAY_MS = 1200;
-
-type Sdk = typeof import('react-native-google-mobile-ads');
-
-function loadSdk(): Sdk | null {
-  if (Platform.OS === 'web' || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('react-native-google-mobile-ads') as Sdk;
-  } catch {
-    return null;
-  }
-}
 
 const sdk = loadSdk();
 

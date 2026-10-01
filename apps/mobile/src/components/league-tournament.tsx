@@ -199,6 +199,8 @@ export function LeagueTournament({
               <Pressable
                 key={m}
                 onPress={() => onRandom(m === 'random')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: mode === m }}
                 style={[styles.segBtn, mode === m && styles.segActive]}>
                 <Icon name={m === 'pick' ? 'tune' : 'casino'} size={13} color={mode === m ? C.text : C.textMuted} />
                 <Txt v="cap" color={mode === m ? C.text : C.textMuted}>

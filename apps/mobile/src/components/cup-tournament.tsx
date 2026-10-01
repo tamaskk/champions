@@ -188,6 +188,8 @@ export function CupTournament({
               <Pressable
                 key={m}
                 onPress={() => onRandom(m === 'random')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: mode === m }}
                 style={[styles.segBtn, mode === m && styles.segActive]}>
                 <Icon name={m === 'pick' ? 'tune' : 'casino'} size={13} color={mode === m ? C.text : C.textMuted} />
                 <Txt v="cap" color={mode === m ? C.text : C.textMuted}>
@@ -360,6 +362,8 @@ export function CupTournament({
               <Pressable
                 key={t.id}
                 onPress={() => setView(t.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: view === t.id }}
                 style={[styles.tab, view === t.id && styles.tabActive]}>
                 <Txt v="bodySemi" color={view === t.id ? C.onGreenStrong : C.textMuted}>
                   {t.label}

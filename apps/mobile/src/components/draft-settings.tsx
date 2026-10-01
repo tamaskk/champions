@@ -1,6 +1,7 @@
 import { DRAFT_BOOSTS, STORE_ITEMS, type DraftBoostId } from '@champion/shared';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
 import { Icon } from '@/design/icon';
 import { Txt } from '@/design/text';
@@ -20,6 +21,7 @@ type Props = {
 /** Draft settings behind the tune button: spin speed, chemistry lines, re-spins, restart. */
 export function DraftSettings({ respins, onRestart, boosts, onClose }: Props) {
   const { settings } = useProgress();
+  const reducedMotion = useReducedMotion();
   const [confirmRestart, setConfirmRestart] = useState(false);
   const [activating, setActivating] = useState<DraftBoostId | null>(null);
   const [boostNote, setBoostNote] = useState<string | null>(null);
@@ -42,11 +44,14 @@ export function DraftSettings({ respins, onRestart, boosts, onClose }: Props) {
           <View style={styles.flex}>
             <Txt v="bodyBold">Dramatic spins</Txt>
             <Txt v="cap" color={C.textMuted}>
-              Reels spin twice as long. Tap a spinning reel to stop it at once either way.
+              {reducedMotion
+                ? 'Off while Reduce Motion is on in your phone settings: reels show their result without spinning.'
+                : 'Reels spin twice as long. Tap a spinning reel to stop it at once either way.'}
             </Txt>
           </View>
           <Switch
-            value={settings.dramaticReels}
+            value={settings.dramaticReels && !reducedMotion}
+            disabled={reducedMotion}
             onValueChange={(v) => setSetting('dramaticReels', v)}
             trackColor={{ true: C.greenStrong, false: C.surface4 }}
             accessibilityLabel="Dramatic spins"

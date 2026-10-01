@@ -42,6 +42,8 @@ export function Select({
             <Pressable
               key={o.key}
               onPress={() => onSelect(o.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: !!o.active }}
               style={({ pressed }) => [styles.option, o.active && styles.active, pressed && styles.pressed]}>
               <Txt v={o.active ? 'bodyBold' : 'body'} color={o.active ? C.onGreenStrong : C.text}>
                 {o.label}

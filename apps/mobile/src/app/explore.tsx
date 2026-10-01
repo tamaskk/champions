@@ -103,6 +103,8 @@ export default function ExploreScreen() {
               <Pressable
                 key={f}
                 onPress={() => setFilter(f)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: filter === f }}
                 style={[styles.filter, filter === f && styles.filterActive]}>
                 <Txt v="bodySemi" color={filter === f ? C.onGreenStrong : C.textMuted}>
                   {f}

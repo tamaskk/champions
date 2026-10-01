@@ -4,6 +4,7 @@ import Animated, {
   Easing,
   cancelAnimation,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSequence,
   withTiming,
@@ -14,6 +15,8 @@ import { C, F, alpha } from '@/design/tokens';
 import { useProgress } from '@/game/progress';
 
 const DEFAULT_ROW_HEIGHT = 40;
+// With the system's Reduce Motion on, a reel shows its result after this short pause instead of spinning.
+const REDUCED_MOTION_MS = 250;
 const DEFAULT_VISIBLE_ROWS = 3;
 const DEFAULT_DURATION_MS = 5000;
 // Minimum rows one spin travels, so short lists still spin fast.
@@ -72,6 +75,8 @@ export function SlotReel<T extends string>({
   const casino = progress.equipped.reel === 'reel-casino';
   // Spins are fast by default (half the reel's duration); the "Dramatic spins" setting plays them in full.
   const spinMs = progress.settings.dramaticReels ? duration : Math.round(duration / 2);
+  // The phone's "Reduce Motion" setting: no spinning strip, the result just appears.
+  const reducedMotion = useReducedMotion();
   const n = items.length;
   const center = Math.floor(visibleRows / 2);
   const loops = Math.max(2, Math.ceil(MIN_TRAVEL_ROWS / n));
@@ -152,6 +157,11 @@ export function SlotReel<T extends string>({
       const startTop = endTop + loops * n + drift;
       topRow.current = endTop;
       current.current = { spinId, index, endTop };
+      if (reducedMotion) {
+        offsetY.value = -endTop * rowHeight;
+        safety.current = setTimeout(() => finish(spinId, index), REDUCED_MOTION_MS);
+        return;
+      }
       offsetY.value = withSequence(
         withTiming(-startTop * rowHeight, { duration: 0 }),
         withTiming(-endTop * rowHeight, { duration: spinMs, easing: Easing.out(Easing.poly(4)) }, (finished) => {
